@@ -5,13 +5,11 @@ read -p "MySQL host: " dbhost
 read -p "MySQL user: " dbuser
 read -s -p "MySQL password: " dbpasswd
 echo
-if false; then
 cat >setup.php <<EOF
 <?php
   \$dbhost='$dbhost';   \$dbuser='$dbuser';   \$dbpasswd='$dbpasswd';
 ?>
 EOF
-fi
 
 echo "setup.php wurde angelegt."
 
