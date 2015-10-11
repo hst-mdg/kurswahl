@@ -21,16 +21,11 @@ SET time_zone = "+00:00";
 --
 
 --
--- Daten für Tabelle `kurse`
+-- Daten für Tabelle `wahl_einstellungen`
 --
 
-INSERT INTO `kurse` (`id`, `kuerzel`, `block`, `beschr_id`) VALUES
-(1, '01a', 1, 1),
-(2, '01b', 1, 1),
-(3, '02', 1, 2),
-(4, '03', 1, 3),
-(5, '04', 1, 4),
-(6, '05', 1, 5);
+INSERT INTO `wahl_einstellungen` (`id`, `name`, `bloecke`, `startdatum`, `enddatum`) VALUES
+(1, 'Projektwoche 2016', 1, '2015-10-01 00:00:00', '2016-06-30 00:00:00');
 
 --
 -- Daten für Tabelle `kurs_beschreibungen`
@@ -44,11 +39,16 @@ INSERT INTO `kurs_beschreibungen` (`id`, `wahl_id`, `titel`, `beschreibung`) VAL
 (5, 1, 'Schulgarten', '');
 
 --
--- Daten für Tabelle `wahl_einstellungen`
+-- Daten für Tabelle `kurse`
 --
 
-INSERT INTO `wahl_einstellungen` (`id`, `name`, `bloecke`, `startdatum`, `enddatum`) VALUES
-(1, 'Projektwoche 2016', 1, '2015-10-01 00:00:00', '2016-06-30 00:00:00');
+INSERT INTO `kurse` (`id`, `kuerzel`, `block`, `beschr_id`) VALUES
+(1, '01a', 1, 1),
+(2, '01b', 1, 1),
+(3, '02', 1, 2),
+(4, '03', 1, 3),
+(5, '04', 1, 4),
+(6, '05', 1, 5);
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
