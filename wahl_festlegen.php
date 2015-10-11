@@ -29,10 +29,14 @@ END;
   foreach($wahlen as $id => $w) {
     $form.="    <option value='$id'>$w</option>\n";
   }
+  $hidden="";
+  if (isset($_POST['lehrername']))
+    $hidden="<input type='hidden' name='lehrername' value='".$_POST['lehrername']."'>";
+  if (isset($_POST['schuelername']))
+    $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
   $form.=<<<END
   </select><br>
-  <input type='hidden' name='lehrername' value='{$_POST['lehrername']}'><br>
-  <input type='hidden' name='schuelername' value='{$_POST['schuelername']}'><br>
+  $hidden
   <input type='submit' value='Weiter'><br>
 </form>
 END;
