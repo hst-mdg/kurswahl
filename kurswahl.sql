@@ -3,10 +3,11 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 11. Okt 2015 um 18:29
+-- Erstellungszeit: 12. Okt 2015 um 21:02
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
+SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
 
@@ -19,9 +20,8 @@ SET time_zone = "+00:00";
 --
 -- Datenbank: `kurswahl`
 --
-
-CREATE DATABASE IF NOT EXISTS kurswahl;
-USE kurswahl;
+CREATE DATABASE IF NOT EXISTS `kurswahl` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+USE `kurswahl`;
 
 -- --------------------------------------------------------
 
@@ -48,6 +48,30 @@ CREATE TABLE IF NOT EXISTS `kurs_beschreibungen` (
   `titel` varchar(100) NOT NULL,
   `beschreibung` varchar(1000) NOT NULL
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `schueler`
+--
+
+CREATE TABLE IF NOT EXISTS `schueler` (
+`id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `klasse` varchar(3) NOT NULL
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `schueler_wahl`
+--
+
+CREATE TABLE IF NOT EXISTS `schueler_wahl` (
+  `schueler_id` int(11) NOT NULL,
+  `kurs_id` int(11) NOT NULL,
+  `prioritaet` int(11) NOT NULL DEFAULT '1'
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
@@ -80,6 +104,18 @@ ALTER TABLE `kurs_beschreibungen`
  ADD PRIMARY KEY (`id`,`wahl_id`), ADD KEY `wahl_id` (`wahl_id`);
 
 --
+-- Indexes for table `schueler`
+--
+ALTER TABLE `schueler`
+ ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `id` (`id`,`name`), ADD UNIQUE KEY `id_2` (`id`), ADD UNIQUE KEY `name` (`name`), ADD UNIQUE KEY `name_2` (`name`), ADD UNIQUE KEY `id_3` (`id`);
+
+--
+-- Indexes for table `schueler_wahl`
+--
+ALTER TABLE `schueler_wahl`
+ ADD PRIMARY KEY (`schueler_id`,`kurs_id`,`prioritaet`), ADD KEY `kurs_id` (`kurs_id`);
+
+--
 -- Indexes for table `wahl_einstellungen`
 --
 ALTER TABLE `wahl_einstellungen`
@@ -98,6 +134,11 @@ MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 -- AUTO_INCREMENT for table `kurs_beschreibungen`
 --
 ALTER TABLE `kurs_beschreibungen`
+MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+--
+-- AUTO_INCREMENT for table `schueler`
+--
+ALTER TABLE `schueler`
 MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 --
 -- AUTO_INCREMENT for table `wahl_einstellungen`
@@ -119,6 +160,14 @@ ADD CONSTRAINT `kurse_ibfk_1` FOREIGN KEY (`beschr_id`) REFERENCES `kurs_beschre
 --
 ALTER TABLE `kurs_beschreibungen`
 ADD CONSTRAINT `kurs_beschreibungen_ibfk_1` FOREIGN KEY (`wahl_id`) REFERENCES `wahl_einstellungen` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints der Tabelle `schueler_wahl`
+--
+ALTER TABLE `schueler_wahl`
+ADD CONSTRAINT `schueler_wahl_ibfk_4` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `schueler_wahl_ibfk_3` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE;
+SET FOREIGN_KEY_CHECKS=1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
