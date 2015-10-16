@@ -14,7 +14,7 @@ function kurs_anzeige($wahl_id, $lehrer, $action) {
     $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_POST['schuelername']."' AND schueler_id=schueler.id";
     $ergebnis = mysql_query($abfrage) or die (mysql_error());
     while($row = mysql_fetch_object($ergebnis)) {
-      $selected[$row->kurs_id]=$row->prioritaet;
+      $selected[$row->kurs_id][$row->prioritaet]=true;
     }
   }
   
@@ -26,30 +26,36 @@ GROUP BY kursid
 END;
   
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
+  if (isset($_POST['lehrername'])) {
+    $hidden="<input type='hidden' name='lehrername' value='".$_POST['lehrername']."'>";
+    $col1="<th>&nbsp;</th>";
+  } elseif (isset($_POST['schuelername'])) {
+    $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
+    $col1="<th>I</th><th>II</th><th>III</th>";
+  }
   $ret=<<<EOF
 <form action='$action' method='post'>
 <input type='hidden' name='wahl_id' value='$wahl_id'>
 <table border='1'>
-  <tr><th>&nbsp;</th>
+  <tr>$col1
     <th>Titel</th>
     <th>Beschreibung</th>
-  </tr>\n
+  </tr>
+  $hidden
 EOF;
-  if (isset($_POST['lehrername']))
-    $hidden="<input type='hidden' name='lehrername' value='".$_POST['lehrername']."'>";
-  if (isset($_POST['schuelername']))
-    $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
-  $ret.=$hidden;  
   while($row = mysql_fetch_object($ergebnis)) {
     if ($lehrer) {
-      $button="<button type='submit' name='kurs_id' value='".$row->kursid."'>Edit</button>";
+      $button="<td><button type='submit' name='kurs_id' value='".$row->kursid."'>Edit</button></td>";
     } else {
-      $checked=isset($selected[$row->kursid])?"checked":"";
-      $button="<input type='radio' name='kurs_id' value='".$row->kursid."' $checked>";
+      $button="";
+      for ($nr=1; $nr<=3; $nr++) {
+        $checked=isset($selected[$row->kursid][$nr])?"checked":"";
+        $button.="<td><input type='radio' name='kurswahl_id$nr' value='".$row->kursid."' $checked></td>";
+      }
     }
     $ret.=<<<EOF
   <tr>
-    <td>$button</td>
+    $button
     <td>$row->titel ($row->kuerzel)</td>
     <td>$row->beschreibung &nbsp;</td>
   </tr>\n
@@ -87,8 +93,10 @@ function wahl_teilnahme($wahl_id) {
     $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
     mysql_query($cmd);
     if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
-    $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurs_id'].",1 FROM schueler WHERE schueler.name='$schuelername'";
-    mysql_query($cmd) or die (mysql_error());
+    for ($wahl123=1; $wahl123<=3; $wahl123++) {
+      $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123 FROM schueler WHERE schueler.name='$schuelername'";
+      mysql_query($cmd) or die (mysql_error());
+    }
     echo "Deine Wahl wurde gespeichert.<br>";
     echo "Du kannst bis $enddatum die Wahl noch aendern.<br>";
     echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
