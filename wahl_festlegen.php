@@ -30,9 +30,9 @@ END;
     $form.="    <option value='$id'>$w</option>\n";
   }
   $hidden="";
-  if (isset($_POST['lehrername']))
+  if (isset($_POST['lehrername']) && $_POST['lehrername']!="")
     $hidden="<input type='hidden' name='lehrername' value='".$_POST['lehrername']."'>";
-  if (isset($_POST['schuelername']))
+  if (isset($_POST['schuelername']) && $_POST['schuelername']!="")
     $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
   $form.=<<<END
   </select><br>
