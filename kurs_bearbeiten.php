@@ -16,6 +16,7 @@ END;
   while($row = mysql_fetch_object($ergebnis)) {
     $form.=<<<END
   <input type='hidden' name='wahl_id' value='$row->wahl_id'>
+  <input type='hidden' name='lehrername' value='{$_POST['lehrername']}'>
   Titel: <input type='text' name='titel' value='$row->titel'><br>
   Beschreibung: <textarea name='beschr' rows='4' cols='80'>$row->beschreibung</textarea><br>
   Kuerzel: <input type='text' name='kuerzel' value='$row->kuerzel'><br>
