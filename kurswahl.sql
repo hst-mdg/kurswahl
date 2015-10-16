@@ -21,6 +21,9 @@ SET time_zone = "+00:00";
 -- Datenbank: `kurswahl`
 --
 
+CREATE DATABASE IF NOT EXISTS `kurswahl` DEFAULT CHARACTER SET ;
+USE `kurswahl`;
+
 -- --------------------------------------------------------
 
 --
