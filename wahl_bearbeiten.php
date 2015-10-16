@@ -69,7 +69,21 @@ $wahl_id=$_POST['wahl_id'];
 include 'db_connect.php';
 
 if (isset($_POST['lehrername'])) {  // Bearbeitung durch Lehrer
-  echo "Sie bearbeiten die Wahl Nr. '$wahl_id'<br>\n";
+  $cmd="SELECT startdatum,enddatum,name,bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  if ($row = mysql_fetch_object($ergebnis)) {
+    echo <<<END
+Sie bearbeiten die Wahl "$row->name".<br>
+Die Teilnahme an der Wahl ist moeglich von $row->startdatum bis $row->enddatum.<br>
+Sie umfasst $row->bloecke Teile (z.B. Quartale/Halbjahre).<br>
+END;
+  } else {
+    die("Fehler: Die Wahl $wahl_id wurde nicht angelegt.<br>");
+  }
+  if ($row = mysql_fetch_object($ergebnis)) {
+    echo "Fehler: Zur Wahl $wahl_id gibt es mehrere Eintraege!<br>";
+  }
+  echo "Folgende Kurse koennen gewaehlt werden:<br>";
   echo kurs_anzeige($wahl_id,true,"kurs_bearbeiten.php");
 } else {                            // Bearbeitung durch Schüler
   $schuelername=$_POST['schuelername'];
