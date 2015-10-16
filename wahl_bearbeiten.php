@@ -69,13 +69,36 @@ $wahl_id=$_POST['wahl_id'];
 include 'db_connect.php';
 
 if (isset($_POST['lehrername'])) {  // Bearbeitung durch Lehrer
-  $cmd="SELECT startdatum,enddatum,name,bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+
+  if (isset($_POST['wahleinstellungen_speichern'])) {
+    $cmd="UPDATE  wahl_einstellungen SET ";
+    if ($_POST['name']!="") $cmd.=" name='".$_POST['name']."',";
+    if ($_POST['startdatum']!="") $cmd.=" startdatum='".$_POST['startdatum']."',";
+    if ($_POST['enddatum']!="") $cmd.=" enddatum='".$_POST['enddatum']."',";
+    if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."'";
+    $cmd.=" WHERE id='$wahl_id'";
+    //echo $cmd."<br>";
+    mysql_query($cmd) or die (mysql_error());
+    echo "Die ge&auml;nderten Einstellungen wurden gespeichert.<br>";
+  }
+  //$cmd="SELECT DATE_FORMAT(startdatum,'%d.%m.%y %k:%i') as startdatum,DATE_FORMAT(SUBTIME(enddatum,'00:01'),'%d.%m.%y %k:%i') AS enddatum,name,bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $cmd="SELECT startdatum, enddatum,name, bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if ($row = mysql_fetch_object($ergebnis)) {
     echo <<<END
-Sie bearbeiten die Wahl "$row->name".<br>
-Die Teilnahme an der Wahl ist moeglich von $row->startdatum bis $row->enddatum.<br>
-Sie umfasst $row->bloecke Teile (z.B. Quartale/Halbjahre).<br>
+<form action="#" id="einstellungen" method="post">
+  <fieldset>
+    <legend>Wahleinstellungen</legend>
+    <input type="hidden" name="lehrername" value="{$_POST['lehrername']}">
+    <input type="hidden" name="wahl_id" value="$wahl_id">
+    <label>Bezeichnung: <input type="text" name="name" placeholder="$row->name"> <label> <br>
+    <label>Startdatum: <input type="text" name="startdatum" placeholder="$row->startdatum"> </label> <br>
+    <label>Enddatum:   <input type="text" name="enddatum" placeholder="$row->enddatum"> </label> <br>
+    <label>Anzahl Bloecke (z.B. 4 Quartale): <input type="number" name="bloecke" value="$row->bloecke"> </label> <br>
+    <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
+    <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
+  </fieldset>
+</form>
 END;
   } else {
     die("Fehler: Die Wahl $wahl_id wurde nicht angelegt.<br>");
@@ -95,7 +118,7 @@ END;
     mysql_query($cmd) or die (mysql_error());
     $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
     mysql_query($cmd);
-    if (mysql_errno()!=1062) die (mysql_error()); // 1062: Duplicate entry
+    if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
     $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurs_id'].",1 FROM schueler WHERE schueler.name='$schuelername'";
     mysql_query($cmd) or die (mysql_error());
     echo "Deine Wahl wurde gespeichert.<br>";
