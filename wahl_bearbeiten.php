@@ -3,15 +3,22 @@
 /**
  * Es werden alle Kursbeschreibungen zur gewählten wahl_id angezeigt.
  * @param $wahl_id Index der Wahl
+ * @param $block Nr des Blocks (z.B. Quartal); bei Lehrer-Einstellungen irrelevant.
  * @param $lehrer true: Lehrerformular false: Schülerformular
  * @param $action Folgeskript
  * @return String Formular-Code
  */
-function kurs_anzeige($wahl_id, $lehrer, $action) {
+function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
+
+  $abfrage="SELECT bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $ergebnis = mysql_query($abfrage) or die (mysql_error());
+  if ($row = mysql_fetch_object($ergebnis)) {
+    $nbloecke=$row->bloecke;
+  }
 
   if (!$lehrer) { // Gewählte Kurse des Schülers abfragen und in $selected speichern.
     $selected=array();
-    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_POST['schuelername']."' AND schueler_id=schueler.id";
+    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_POST['schuelername']."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
     $ergebnis = mysql_query($abfrage) or die (mysql_error());
     while($row = mysql_fetch_object($ergebnis)) {
       $selected[$row->kurs_id][$row->prioritaet]=true;
@@ -33,16 +40,27 @@ END;
     $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
     $col1="<th>I</th><th>II</th><th>III</th>";
   }
-  $ret=<<<EOF
+  $ret=<<<END
 <form action='$action' method='post'>
 <input type='hidden' name='wahl_id' value='$wahl_id'>
+<input type='hidden' name='block' value='$block'>
+END;
+  if ($nbloecke>1) {
+    for ($b=1; $b<=$nbloecke; $b++) {
+      $style="";
+      if ($b==$block) $style="style='background-color:black;color:white'";
+      $ret.="<input type='submit' name='kurs_speichern' $style value='Block $b'>";
+    }
+  }
+  $ret.="<br>";
+$ret.=<<<END
 <table border='1'>
   <tr>$col1
     <th>Titel</th>
     <th>Beschreibung</th>
   </tr>
   $hidden
-EOF;
+END;
   while($row = mysql_fetch_object($ergebnis)) {
     if ($lehrer) {
       $button="<td><button type='submit' name='kurs_id' value='".$row->kursid."'>Edit</button></td>";
@@ -76,6 +94,9 @@ EOF;
 function wahl_teilnahme($wahl_id) {
   $schuelername=$_POST['schuelername'];
   $wahlname="???"; $enddatum="???";
+  $block=1;
+  if (isset($_POST['block']))
+    $block=$_POST['block'];
   $cmd="SELECT enddatum, name FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if ($row = mysql_fetch_object($ergebnis)) {
@@ -85,22 +106,25 @@ function wahl_teilnahme($wahl_id) {
     die ("Fehler: Die Wahl Nr. $wahl_id wurde noch nicht angelegt.");
   }
   if (!isset($_POST['kurs_speichern'])) { // Noch keine Eingabe
-     echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
-     echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
+    echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
   } else { // Speichern der Eingabe
-    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername'";
+    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername' AND block='$block'";
     mysql_query($cmd) or die (mysql_error());
     $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
     mysql_query($cmd);
     if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
     for ($wahl123=1; $wahl123<=3; $wahl123++) {
-      $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123 FROM schueler WHERE schueler.name='$schuelername'";
+      if (!isset($_POST['kurswahl_id'.$wahl123])) continue;
+      $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet,block) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123,$block FROM schueler WHERE schueler.name='$schuelername'";
       mysql_query($cmd) or die (mysql_error());
     }
-    echo "Deine Wahl wurde gespeichert.<br>";
-    echo "Du kannst bis $enddatum die Wahl noch aendern.<br>";
-    echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
+    echo "Deine Wahl wurde gespeichert in Block $block.<br>"; 
+    echo "Du kannst bis $enddatum die Wahl noch &auml;ndern.<br>";
+    if (preg_match("/^Block ([0-9]+)$/",$_POST['kurs_speichern'],$matches)) {
+      $block=$matches[1];
+    }
   }
+  echo kurs_anzeige($wahl_id,$block,false,"wahl_bearbeiten.php");
 }
 
 /**
@@ -142,10 +166,10 @@ END;
     die("Fehler: Die Wahl $wahl_id wurde nicht angelegt.<br>");
   }
   if ($row = mysql_fetch_object($ergebnis)) {
-    echo "Fehler: Zur Wahl $wahl_id gibt es mehrere Eintraege!<br>";
+    echo "Fehler: Zur Wahl $wahl_id gibt es mehrere Eintr&auml;ge!<br>";
   }
-  echo "Folgende Kurse koennen gewaehlt werden:<br>";
-  echo kurs_anzeige($wahl_id,true,"kurs_bearbeiten.php");
+  echo "Folgende Kurse koennen gew&auml;hlt werden:<br>";
+  echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
 }
 
 if (!isset($_POST['wahl_id']))
