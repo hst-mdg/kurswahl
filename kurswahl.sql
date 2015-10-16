@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 12. Okt 2015 um 21:02
+-- Erstellungszeit: 16. Okt 2015 um 20:12
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -20,8 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Datenbank: `kurswahl`
 --
-CREATE DATABASE IF NOT EXISTS `kurswahl` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
-USE `kurswahl`;
 
 -- --------------------------------------------------------
 
@@ -70,6 +68,7 @@ CREATE TABLE IF NOT EXISTS `schueler` (
 CREATE TABLE IF NOT EXISTS `schueler_wahl` (
   `schueler_id` int(11) NOT NULL,
   `kurs_id` int(11) NOT NULL,
+  `block` int(11) NOT NULL DEFAULT '1',
   `prioritaet` int(11) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
@@ -113,7 +112,7 @@ ALTER TABLE `schueler`
 -- Indexes for table `schueler_wahl`
 --
 ALTER TABLE `schueler_wahl`
- ADD PRIMARY KEY (`schueler_id`,`kurs_id`,`prioritaet`), ADD KEY `kurs_id` (`kurs_id`);
+ ADD PRIMARY KEY (`schueler_id`,`kurs_id`,`block`,`prioritaet`), ADD KEY `kurs_id` (`kurs_id`);
 
 --
 -- Indexes for table `wahl_einstellungen`
@@ -165,8 +164,8 @@ ADD CONSTRAINT `kurs_beschreibungen_ibfk_1` FOREIGN KEY (`wahl_id`) REFERENCES `
 -- Constraints der Tabelle `schueler_wahl`
 --
 ALTER TABLE `schueler_wahl`
-ADD CONSTRAINT `schueler_wahl_ibfk_4` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE,
-ADD CONSTRAINT `schueler_wahl_ibfk_3` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE;
+ADD CONSTRAINT `schueler_wahl_ibfk_3` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `schueler_wahl_ibfk_4` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE;
 SET FOREIGN_KEY_CHECKS=1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
