@@ -63,13 +63,43 @@ EOF;
   return $ret;
 }
 
-if (!isset($_POST['wahl_id']))
-  die("Es wurde keine Wahl festgelegt.");
-$wahl_id=$_POST['wahl_id'];
-include 'db_connect.php';
+/**
+ * Diese Funktion zeigt alle wählbaren Kurse an und speichert die Eingaben des Schülers
+ * @param wahl_id ID der zur Teilnahme ausgewählten Wahl
+ */
+function wahl_teilnahme($wahl_id) {
+  $schuelername=$_POST['schuelername'];
+  $wahlname="???"; $enddatum="???";
+  $cmd="SELECT enddatum, name FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  if ($row = mysql_fetch_object($ergebnis)) {
+    $wahlname=$row->name;
+    $enddatum=$row->enddatum;
+  } else {
+    die ("Fehler: Die Wahl Nr. $wahl_id wurde noch nicht angelegt.");
+  }
+  if (!isset($_POST['kurs_speichern'])) { // Noch keine Eingabe
+     echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
+     echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
+  } else { // Speichern der Eingabe
+    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername'";
+    mysql_query($cmd) or die (mysql_error());
+    $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
+    mysql_query($cmd);
+    if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
+    $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurs_id'].",1 FROM schueler WHERE schueler.name='$schuelername'";
+    mysql_query($cmd) or die (mysql_error());
+    echo "Deine Wahl wurde gespeichert.<br>";
+    echo "Du kannst bis $enddatum die Wahl noch aendern.<br>";
+    echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
+  }
+}
 
-if (isset($_POST['lehrername'])) {  // Bearbeitung durch Lehrer
-
+/**
+ * Diese Funktion zeigt das Formular mit den Wahl-Einstellungen (Name, Zeitraum...) an und speichert diese Einstellungen nach Änderung.
+ * @param wahl_id ID der zur Bearbeitung ausgewählten Wahl
+ */
+function wahl_einstellungen($wahl_id) {
   if (isset($_POST['wahleinstellungen_speichern'])) {
     $cmd="UPDATE  wahl_einstellungen SET ";
     if ($_POST['name']!="") $cmd.=" name='".$_POST['name']."',";
@@ -108,23 +138,17 @@ END;
   }
   echo "Folgende Kurse koennen gewaehlt werden:<br>";
   echo kurs_anzeige($wahl_id,true,"kurs_bearbeiten.php");
+}
+
+if (!isset($_POST['wahl_id']))
+  die("Es wurde keine Wahl festgelegt.");
+$wahl_id=$_POST['wahl_id'];
+include 'db_connect.php';
+
+if (isset($_POST['lehrername'])) {  // Bearbeitung durch Lehrer
+  wahl_einstellungen($wahl_id);
 } else {                            // Bearbeitung durch Schüler
-  $schuelername=$_POST['schuelername'];
-  if (!isset($_POST['kurs_speichern'])) {
-    echo "Du hast bis ... Zeit, an der Wahl Nr. '$wahl_id' teilzunehmen.<br>\n";
-    echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
-  } else {
-    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername'";
-    mysql_query($cmd) or die (mysql_error());
-    $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
-    mysql_query($cmd);
-    if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
-    $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) SELECT id,".$_POST['kurs_id'].",1 FROM schueler WHERE schueler.name='$schuelername'";
-    mysql_query($cmd) or die (mysql_error());
-    echo "Deine Wahl wurde gespeichert.<br>";
-    echo "Du kannst bis ... die Wahl noch aendern.<br>";
-    echo kurs_anzeige($wahl_id,false,"wahl_bearbeiten.php");
-  }
+  wahl_teilnahme($wahl_id);
 }
 
 ?>
