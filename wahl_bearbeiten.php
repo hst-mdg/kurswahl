@@ -1,5 +1,5 @@
 <?php
-
+if (!isset($_SESSION)) session_start();
 /**
  * Es werden alle Kursbeschreibungen zur gewählten wahl_id angezeigt.
  * @param $wahl_id Index der Wahl
@@ -18,7 +18,7 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
 
   if (!$lehrer) { // Gewählte Kurse des Schülers abfragen und in $selected speichern.
     $selected=array();
-    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_POST['schuelername']."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
+    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_SESSION['schuelername']."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
     $ergebnis = mysql_query($abfrage) or die (mysql_error());
     while($row = mysql_fetch_object($ergebnis)) {
       $selected[$row->kurs_id][$row->prioritaet]=true;
@@ -33,17 +33,15 @@ GROUP BY kursid
 END;
   
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
-  if (isset($_POST['lehrername'])) {
-    $hidden="<input type='hidden' name='lehrername' value='".$_POST['lehrername']."'>";
+  if (isset($_SESSION['lehrername'])) {
     $col1="<th>&nbsp;</th>";
-  } elseif (isset($_POST['schuelername'])) {
-    $hidden="<input type='hidden' name='schuelername' value='".$_POST['schuelername']."'>";
+  } elseif (isset($_SESSION['schuelername'])) {
     $col1="<th>I</th><th>II</th><th>III</th>";
   }
+  $_SESSION['wahl_id']=$wahl_id;
+  $_SESSION['block']=$block;
   $ret=<<<END
 <form action='$action' method='post'>
-<input type='hidden' name='wahl_id' value='$wahl_id'>
-<input type='hidden' name='block' value='$block'>
 END;
   if ($nbloecke>1) {
     for ($b=1; $b<=$nbloecke; $b++) {
@@ -59,7 +57,6 @@ $ret.=<<<END
     <th>Titel</th>
     <th>Beschreibung</th>
   </tr>
-  $hidden
 END;
   while($row = mysql_fetch_object($ergebnis)) {
     if ($lehrer) {
@@ -92,7 +89,7 @@ EOF;
  * @param wahl_id ID der zur Teilnahme ausgewählten Wahl
  */
 function wahl_teilnahme($wahl_id) {
-  $schuelername=$_POST['schuelername'];
+  $schuelername=$_SESSION['schuelername'];
   $wahlname="???"; $enddatum="???";
   $block=1;
   if (isset($_POST['block']))
@@ -148,11 +145,9 @@ function wahl_einstellungen($wahl_id) {
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if ($row = mysql_fetch_object($ergebnis)) {
     echo <<<END
-<form action="#" id="einstellungen" method="post">
+<form action="wahl_bearbeiten.php" id="einstellungen" method="post">
   <fieldset>
     <legend>Wahleinstellungen</legend>
-    <input type="hidden" name="lehrername" value="{$_POST['lehrername']}">
-    <input type="hidden" name="wahl_id" value="$wahl_id">
     <label>Bezeichnung: <input type="text" name="name" placeholder="$row->name"> <label> <br>
     <label>Startdatum: <input type="text" name="startdatum" placeholder="$row->startdatum"> </label> <br>
     <label>Enddatum:   <input type="text" name="enddatum" placeholder="$row->enddatum"> </label> <br>
@@ -172,12 +167,15 @@ END;
   echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
 }
 
-if (!isset($_POST['wahl_id']))
+if (isset($_POST['wahl_id']))
+  $_SESSION['wahl_id']=$_POST['wahl_id'];
+if (!isset($_SESSION['wahl_id']))
   die("Es wurde keine Wahl festgelegt.");
-$wahl_id=$_POST['wahl_id'];
+$wahl_id=$_SESSION['wahl_id'];
+
 include 'db_connect.php';
 
-if (isset($_POST['lehrername'])) {  // Bearbeitung durch Lehrer
+if (isset($_SESSION['lehrername'])) {  // Bearbeitung durch Lehrer
   wahl_einstellungen($wahl_id);
 } else {                            // Bearbeitung durch Schüler
   wahl_teilnahme($wahl_id);
