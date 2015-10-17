@@ -43,7 +43,7 @@ END;
   $ret=<<<END
 <form action='$action' method='post'>
 END;
-  if ($nbloecke>1) {
+  if (!$lehrer && $nbloecke>1) {
     for ($b=1; $b<=$nbloecke; $b++) {
       $style="";
       if ($b==$block) $style="style='background-color:black;color:white'";
@@ -58,9 +58,13 @@ $ret.=<<<END
     <th>Beschreibung</th>
   </tr>
 END;
+  if ($lehrer) {
+    $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td><td>&nbsp;</td><td>&nbsp;</td>";
+  }
   while($row = mysql_fetch_object($ergebnis)) {
     if ($lehrer) {
-      $button="<td><button type='submit' name='kurs_id' value='".$row->kursid."'>Edit</button></td>";
+      $button="<td><button type='submit' name='edit' value='".$row->kursid."'><image src='img/edit.png'></button>"
+        ."<button type='submit' name='delete' value='".$row->kursid."'><image src='img/remove.png'></button></td>";
     } else {
       $button="";
       for ($nr=1; $nr<=3; $nr++) {
@@ -92,8 +96,8 @@ function wahl_teilnahme($wahl_id) {
   $schuelername=$_SESSION['schuelername'];
   $wahlname="???"; $enddatum="???";
   $block=1;
-  if (isset($_POST['block']))
-    $block=$_POST['block'];
+  if (isset($_SESSION['block']))
+    $block=$_SESSION['block'];
   $cmd="SELECT enddatum, name FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if ($row = mysql_fetch_object($ergebnis)) {
@@ -107,9 +111,6 @@ function wahl_teilnahme($wahl_id) {
   } else { // Speichern der Eingabe
     $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername' AND block='$block'";
     mysql_query($cmd) or die (mysql_error());
-    $cmd="INSERT INTO schueler (name) VALUES ('$schuelername')";
-    mysql_query($cmd);
-    if (mysql_errno()!=1062 && mysql_errno()!=0) die (mysql_error()); // 1062: Duplicate entry
     for ($wahl123=1; $wahl123<=3; $wahl123++) {
       if (!isset($_POST['kurswahl_id'.$wahl123])) continue;
       $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet,block) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123,$block FROM schueler WHERE schueler.name='$schuelername'";
@@ -151,7 +152,7 @@ function wahl_einstellungen($wahl_id) {
     <label>Bezeichnung: <input type="text" name="name" placeholder="$row->name"> <label> <br>
     <label>Startdatum: <input type="text" name="startdatum" placeholder="$row->startdatum"> </label> <br>
     <label>Enddatum:   <input type="text" name="enddatum" placeholder="$row->enddatum"> </label> <br>
-    <label>Anzahl Bloecke (z.B. 4 Quartale): <input type="number" name="bloecke" value="$row->bloecke"> </label> <br>
+    <label>Anzahl Bloecke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
   </fieldset>
@@ -167,10 +168,11 @@ END;
   echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
 }
 
+unset($_SESSION['kurs_id']);
 if (isset($_POST['wahl_id']))
   $_SESSION['wahl_id']=$_POST['wahl_id'];
 if (!isset($_SESSION['wahl_id']))
-  die("Es wurde keine Wahl festgelegt.");
+  header("Location: wahl_festlegen.php");
 $wahl_id=$_SESSION['wahl_id'];
 
 include 'db_connect.php';
