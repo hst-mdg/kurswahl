@@ -37,6 +37,7 @@ END;
   return $form;
 }
 
+unset($_SESSION['wahl_id']);
 // Wahlmöglichkeiten aus DB holen:
 $wahlen=wahlen();
 
@@ -50,6 +51,8 @@ if (isset($_POST['lehrername'])) {
   $_SESSION['schuelername']=$_POST['schuelername'];
   echo "W&auml;hle aus, an welcher Wahl du teilnehmen m&ouml;chtest:<br>\n"
     .form($wahlen);
+} else {
+  header("Location: login.php");
 }
 
 ?>
