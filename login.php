@@ -53,6 +53,7 @@ END;
 }
 
 echo "<h1>Einloggen</h1>\n";
+session_unset();
 if (isset($_POST['klasse'])) {
   schuelerformular();
 } else {
