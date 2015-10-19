@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 16. Okt 2015 um 20:12
+-- Erstellungszeit: 19. Okt 2015 um 17:22
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -20,8 +20,7 @@ SET time_zone = "+00:00";
 --
 -- Datenbank: `kurswahl`
 --
-
-CREATE DATABASE IF NOT EXISTS `kurswahl`;
+CREATE DATABASE IF NOT EXISTS `kurswahl` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 USE `kurswahl`;
 
 -- --------------------------------------------------------
@@ -49,6 +48,17 @@ CREATE TABLE IF NOT EXISTS `kurs_beschreibungen` (
   `titel` varchar(100) NOT NULL,
   `beschreibung` varchar(1000) NOT NULL
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `kurs_jahrgang`
+--
+
+CREATE TABLE IF NOT EXISTS `kurs_jahrgang` (
+  `kurs_id` int(11) NOT NULL,
+  `jahrgang` varchar(3) NOT NULL DEFAULT '*' COMMENT '''*'': keine Einschränkung'
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
@@ -104,6 +114,12 @@ ALTER TABLE `kurse`
 --
 ALTER TABLE `kurs_beschreibungen`
  ADD PRIMARY KEY (`id`,`wahl_id`), ADD KEY `wahl_id` (`wahl_id`);
+
+--
+-- Indexes for table `kurs_jahrgang`
+--
+ALTER TABLE `kurs_jahrgang`
+ ADD PRIMARY KEY (`kurs_id`,`jahrgang`);
 
 --
 -- Indexes for table `schueler`
@@ -162,6 +178,12 @@ ADD CONSTRAINT `kurse_ibfk_1` FOREIGN KEY (`beschr_id`) REFERENCES `kurs_beschre
 --
 ALTER TABLE `kurs_beschreibungen`
 ADD CONSTRAINT `kurs_beschreibungen_ibfk_1` FOREIGN KEY (`wahl_id`) REFERENCES `wahl_einstellungen` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints der Tabelle `kurs_jahrgang`
+--
+ALTER TABLE `kurs_jahrgang`
+ADD CONSTRAINT `kurs_jahrgang_ibfk_1` FOREIGN KEY (`kurs_id`) REFERENCES `kurse` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints der Tabelle `schueler_wahl`
