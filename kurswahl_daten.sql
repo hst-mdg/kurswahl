@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 12. Okt 2015 um 21:03
+-- Erstellungszeit: 19. Okt 2015 um 22:02
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -858,6 +858,24 @@ INSERT INTO `schueler` (`id`, `name`, `klasse`) VALUES
 
 INSERT INTO `wahl_einstellungen` (`id`, `name`, `bloecke`, `startdatum`, `enddatum`) VALUES
 (1, 'Projektwoche 2016', 1, '2015-10-01 00:00:00', '2016-06-30 00:00:00');
+
+--
+-- Daten für Tabelle `zusatz`
+--
+
+INSERT INTO `zusatz` (`id`, `wahl_id`, `name`, `mehrfach`) VALUES
+(1, 1, 'Bereiche', 1);
+
+--
+-- Daten für Tabelle `zusatz_werte`
+--
+
+INSERT INTO `zusatz_werte` (`id`, `zusatz_id`, `wert`) VALUES
+(2, 1, 'fremdsprachlich'),
+(4, 1, 'gesellschaftlich'),
+(5, 1, 'lernorganisatorisch'),
+(3, 1, 'mathematisch-naturwissenschaftlich'),
+(1, 1, 'sprachlich');
 SET FOREIGN_KEY_CHECKS=1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

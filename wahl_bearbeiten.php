@@ -36,13 +36,16 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
     if (isset($jahr)) $klasse.=",'$jahr'";
     $jahrgang_cond="(jahrgang IN ($klasse, '') OR ISNULL(jahrgang))";
   }
+  $zusaetze=zusatz_abfrage($wahl_id);
+  $zusaetze=array_map(function($a){ return join("/",$a); },$zusaetze);
   $abfrage = <<<END
-SELECT kurs_beschreibungen.id as kursid, GROUP_CONCAT(kurse.kuerzel,':',IFNULL(kurs_jahrgang.jahrgang,'-')) as kj, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
+SELECT kurs_beschreibungen.id as kursid, GROUP_CONCAT(kurse.kuerzel,':',IFNULL(kurs_jahrgang.jahrgang,'-')) as kj,
+kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
 FROM kurs_beschreibungen
 LEFT JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
 LEFT JOIN kurs_jahrgang ON kurse.id=kurs_jahrgang.kurs_id
-WHERE kurs_beschreibungen.wahl_id='$wahl_id' AND
-$jahrgang_cond
+WHERE kurs_beschreibungen.wahl_id='$wahl_id'
+AND $jahrgang_cond
 GROUP BY kursid
 END;
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
@@ -69,12 +72,14 @@ $ret.=<<<END
   <tr>$col1
     <th>Titel</th>
     <th>Beschreibung</th>
+    <th>Bereich</th>
   </tr>
 END;
   if ($lehrer) {
-    $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td><td>&nbsp;</td><td>&nbsp;</td>";
+    $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>";
   }
   while($row = mysql_fetch_object($ergebnis)) {
+    if (!isset($zusaetze[$row->kursid])) $zusaetze[$row->kursid]="---";
     if ($lehrer) {
       $button="<td><button type='submit' name='edit' value='".$row->kursid."'><image src='img/edit.png'></button>"
         ."<button type='submit' name='delete' value='".$row->kursid."'><image src='img/remove.png'></button></td>";
@@ -90,6 +95,7 @@ END;
     $button
     <td>$row->titel ($row->kj)</td>
     <td>$row->beschreibung &nbsp;</td>
+    <td>{$zusaetze[$row->kursid]} &nbsp;</td>
   </tr>\n
 EOF;
   }
@@ -98,6 +104,27 @@ EOF;
     $ret.="<input type='submit' name='kurs_speichern' value='Speichern'><br>";
   }
   $ret.="</form>";
+  return $ret;
+}
+
+/**
+ * Speichert alle Kurs-Zusätze (z.B. sprachlich/mathematisch) in einem Array.
+ * @param wahl_id ID der zur Teilnahme ausgewählten Wahl
+ * @return Array mit den Zusätzen (kurs_id => Bereich)
+ */
+function zusatz_abfrage($wahl_id) {
+  $cmd=<<<END
+  SELECT kb.id, zw.wert FROM kurs_beschreibungen AS kb
+  JOIN kurs_zusaetze AS kz ON kz.kurs_id=kb.id
+  JOIN zusatz_werte AS zw ON zw.id=kz.zusatz_wert_id
+  JOIN zusatz ON zw.zusatz_id=zusatz.id
+  WHERE zusatz.name='Bereiche'
+END;
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  $ret=array();
+  while($row = mysql_fetch_object($ergebnis)) {
+    $ret[$row->id][]=$row->wert;
+  }
   return $ret;
 }
 
