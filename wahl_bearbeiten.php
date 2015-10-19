@@ -25,13 +25,26 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
     }
   }
   
+  if (isset($_SESSION['lehrername'])) {
+    $jahrgang_cond="1";
+  } else {
+    $klasse=$_SESSION['klasse'];
+    if (preg_match("/^(\d+)[a-zA-Z]+$/",$klasse, $matches)) {
+      $jahr=$matches[1];
+    }
+    $klasse="'".$klasse."'";
+    if (isset($jahr)) $klasse.=",'$jahr'";
+    $jahrgang_cond="(jahrgang IN ($klasse, '') OR ISNULL(jahrgang))";
+  }
   $abfrage = <<<END
-SELECT kurs_beschreibungen.id as kursid, GROUP_CONCAT(kurse.kuerzel) as kuerzel, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
-FROM kurs_beschreibungen JOIN
-kurse ON kurs_beschreibungen.wahl_id='$wahl_id' AND kurs_beschreibungen.id=kurse.beschr_id
+SELECT kurs_beschreibungen.id as kursid, GROUP_CONCAT(kurse.kuerzel,':',IFNULL(kurs_jahrgang.jahrgang,'-')) as kj, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
+FROM kurs_beschreibungen
+LEFT JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
+LEFT JOIN kurs_jahrgang ON kurse.id=kurs_jahrgang.kurs_id
+WHERE kurs_beschreibungen.wahl_id='$wahl_id' AND
+$jahrgang_cond
 GROUP BY kursid
 END;
-  
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
   if (isset($_SESSION['lehrername'])) {
     $col1="<th>&nbsp;</th>";
@@ -75,7 +88,7 @@ END;
     $ret.=<<<EOF
   <tr>
     $button
-    <td>$row->titel ($row->kuerzel)</td>
+    <td>$row->titel ($row->kj)</td>
     <td>$row->beschreibung &nbsp;</td>
   </tr>\n
 EOF;
