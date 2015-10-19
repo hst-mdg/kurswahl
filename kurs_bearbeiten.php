@@ -32,35 +32,52 @@ function kuerzel_abfrage($beschr_id, $kuerzelliste) {
 }
 
 /**
+ * Lösche Einträge in den Tabellen kurse und kurs_jahrgang
+ * @param $beschr_id ID der Kurs-Beschreibung, zu der alle Kurse gelöscht werden.
+ */
+function kurse_loeschen($beschr_id) {
+  $cmd="DELETE kurs_jahrgang FROM kurs_jahrgang JOIN kurse JOIN kurs_beschreibungen ON kurs_id=kurse.id AND beschr_id=kurs_beschreibungen.id WHERE beschr_id='$beschr_id'";
+  mysql_query($cmd) or die ($cmd.": ".mysql_error());
+  $cmd="DELETE FROM kurse WHERE beschr_id='$beschr_id'";
+  mysql_query($cmd) or die ($cmd.": ".mysql_error());
+}
+
+/**
  * Ein existierender oder (falls $jurs_id==-1) nu anzulegender Kurs wird zur Bearbeitung angezeigt.
  * @param $beschr_id ID aus der Tabelle kurs_beschreibungen
  * @param $eingabe Array ggf. mit vorheriger Eingabe für Titel, Beschreibung und Kuerzel.
  */
 
 function kurs_anzeigen($beschr_id, $eingabe) {
-  $abfrage = <<<END
-SELECT GROUP_CONCAT(kurse.kuerzel) as kuerzel, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung,
-kurs_beschreibungen.wahl_id
-FROM kurs_beschreibungen JOIN kurse
-ON kurs_beschreibungen.id=kurse.beschr_id
-AND kurse.beschr_id='$beschr_id'
-GROUP BY kurse.beschr_id
-END;
   if ($beschr_id==-1 && !$eingabe)
     $eingabe=array("titel"=>"", "beschreibung"=>"","kuerzel"=>"");
   if ($eingabe) { // neuen Kurs eingeben
     $row=(object) $eingabe;
   } else {
-    $ergebnis = mysql_query($abfrage) or die (mysql_error());
-    if (!$row = mysql_fetch_object($ergebnis)) {
-      die (mysql_error());
+    $abfrage = <<<END
+SELECT kuerzel, GROUP_CONCAT(kurs_jahrgang.jahrgang) AS jahrgaenge, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung,
+kurs_beschreibungen.wahl_id
+FROM kurs_beschreibungen JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
+LEFT JOIN kurs_jahrgang ON kurs_jahrgang.kurs_id=kurse.id
+WHERE kurse.beschr_id='$beschr_id'
+GROUP BY kuerzel
+END;
+  $jahrgaenge=array();
+  $ergebnis = mysql_query($abfrage) or die (mysql_error());
+    while ($row = mysql_fetch_object($ergebnis)) {
+      $titel=$row->titel;
+      $beschr=$row->beschreibung;
+      $jahrgaenge[$row->kuerzel]=$row->jahrgaenge;
     }
   }
+  $kuerzel=join("/",array_keys($jahrgaenge));
+  $jahrgaenge=join("/",$jahrgaenge);
   return <<<END
 <form action='kurs_bearbeiten.php' method='post'>
-  <label> Titel: <input type='text' name='titel' value='$row->titel'> </label><br>
-  <label> Beschreibung: <textarea name='beschr' rows='4' cols='80'>$row->beschreibung</textarea></label><br>
-  <label> K&uuml;rzel: <input type='text' name='kuerzel' value='$row->kuerzel'></label><br>
+  <label> Titel: <input type='text' name='titel' value='$titel'> </label><br>
+  <label> Beschreibung: <textarea name='beschr' rows='4' cols='80'>$beschr</textarea></label><br>
+  <label> K&uuml;rzel: <input type='text' name='kuerzel' value='$kuerzel'></label><br>
+  <label> Jahrg&auml;nge: <input type='text' name='jahrgaenge' value='$jahrgaenge'></label><br>
   <input type='submit' name='bearbeitet' value='Speichern'>
   <input type='submit' name='bearbeitet' value='Cancel'>
 </form>
@@ -96,8 +113,7 @@ END;
   } elseif (isset($_POST['delete_confirm'])) {
     $cmd="DELETE FROM schueler_wahl WHERE kurs_id='{$_POST['delete_confirm']}'";
     mysql_query($cmd) or die ($cmd.": ".mysql_error());
-    $cmd="DELETE FROM kurse WHERE beschr_id='{$_POST['delete_confirm']}'";
-    mysql_query($cmd) or die ($cmd.": ".mysql_error());
+    kurse_loeschen($_POST['delete_confirm']);
     $cmd="DELETE FROM kurs_beschreibungen WHERE id='{$_POST['delete_confirm']}'";
     mysql_query($cmd) or die ($cmd.": ".mysql_error());
     echo "Der Kurs wurde gel&ouml;scht.";
@@ -117,28 +133,32 @@ END;
       echo kurs_anzeigen($_SESSION['kurs_id'],$eingabe);
       exit;
     }
-    if ($_SESSION['kurs_id']==-1) {
+    if ($_SESSION['kurs_id']==-1) { // Neuen Kurs speichern
       $cmd=<<<END
 INSERT INTO kurs_beschreibungen (wahl_id,titel,beschreibung)
 VALUES('{$_SESSION['wahl_id']}','{$_POST['titel']}','{$_POST['beschr']}')
 END;
       mysql_query($cmd) or die (mysql_error());
       $_SESSION['kurs_id']=mysql_insert_id();
-    } else {
+    } else { // Vorhandenen Kurs aktualisieren
       $cmd=<<<END
 UPDATE kurs_beschreibungen SET titel='{$_POST['titel']}', beschreibung='{$_POST['beschr']}'
 WHERE id='{$_SESSION['kurs_id']}'
 END;
     }
     mysql_query($cmd) or die (mysql_error());
-    $cmd="DELETE FROM kurse WHERE beschr_id = '".$_SESSION['kurs_id']."'";
-    mysql_query($cmd) or die (mysql_error());
+    // Kürzel usw. für neuen oder existierenden Kurs löschen und neu eintragen
+    kurse_loeschen($_SESSION['kurs_id']);
     foreach ($kuerzelarray as $k) {
       $cmd=<<<END
 INSERT INTO kurse (beschr_id,kuerzel,block) VALUES('{$_SESSION['kurs_id']}','$k','1')
 END;
       // TODO: block Eingabemöglichkeit + Speichern
       mysql_query($cmd) or die (mysql_error());
+      $kurs_id=mysql_insert_id();
+      $cmd="INSERT INTO kurs_jahrgang (kurs_id,jahrgang) VALUES ('$kurs_id','')";
+      // TODO: Jahrgänge aus Textfeld übernehmen
+      mysql_query($cmd) or die ($cmd.": ".mysql_error());
     }
     echo "Der Kurs wurde gespeichert.<br>";
   } else {
