@@ -38,9 +38,16 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
   }
   $zusaetze=zusatz_abfrage($wahl_id);
   $zusaetze=array_map(function($a){ return join("/",$a); },$zusaetze);
+  $tmp=kuerzeljahr_abfrage($wahl_id);
+  foreach ($tmp as $id=>$a) {
+    $kuerzel[$id]=join("<br>",array_keys($a));
+    foreach(array_keys($a) as $k) {
+        if (!isset($jahre[$id])) $jahre[$id]=""; else $jahre[$id].="<br>";
+        $jahre[$id].=join(",",$a[$k]);
+      }
+  }
   $abfrage = <<<END
-SELECT kurs_beschreibungen.id as kursid, GROUP_CONCAT(kurse.kuerzel,':',IFNULL(kurs_jahrgang.jahrgang,'-')) as kj,
-kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
+SELECT kurs_beschreibungen.id as kursid, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
 FROM kurs_beschreibungen
 LEFT JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
 LEFT JOIN kurs_jahrgang ON kurse.id=kurs_jahrgang.kurs_id
@@ -71,12 +78,15 @@ $ret.=<<<END
 <table border='1'>
   <tr>$col1
     <th>Titel</th>
+    <th>Kuerzel</th>
+    <th>Jahre</th>
     <th>Beschreibung</th>
     <th>Bereich</th>
   </tr>
 END;
   if ($lehrer) {
-    $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>";
+    $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td>"
+      ."<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>";
   }
   while($row = mysql_fetch_object($ergebnis)) {
     if (!isset($zusaetze[$row->kursid])) $zusaetze[$row->kursid]="---";
@@ -93,7 +103,9 @@ END;
     $ret.=<<<EOF
   <tr>
     $button
-    <td>$row->titel ($row->kj)</td>
+    <td>$row->titel</td>
+    <td>{$kuerzel[$row->kursid]}&nbsp;</td>
+    <td>{$jahre[$row->kursid]}&nbsp;</td>
     <td>$row->beschreibung &nbsp;</td>
     <td>{$zusaetze[$row->kursid]} &nbsp;</td>
   </tr>\n
@@ -119,11 +131,33 @@ function zusatz_abfrage($wahl_id) {
   JOIN zusatz_werte AS zw ON zw.id=kz.zusatz_wert_id
   JOIN zusatz ON zw.zusatz_id=zusatz.id
   WHERE zusatz.name='Bereiche'
+  AND kb.wahl_id='$wahl_id'
 END;
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   $ret=array();
   while($row = mysql_fetch_object($ergebnis)) {
     $ret[$row->id][]=$row->wert;
+  }
+  return $ret;
+}
+
+/**
+ * Speichert alle Kurs-Jahrgangs-Zuordnungen und Kürzel in einem Array
+ * @param wahl_id ID der zur Teilnahme ausgewählten Wahl
+ * @return 3D Array mit den Kuerzeln und Jahrgängen (kurs_id => (Kuerzel => Jahrgang)
+ */
+function kuerzeljahr_abfrage($wahl_id) {
+  $cmd=<<<END
+  SELECT kb.id, kj.jahrgang, k.kuerzel FROM kurs_beschreibungen AS kb
+  JOIN kurse AS k ON k.beschr_id=kb.id
+  JOIN kurs_jahrgang AS kj ON kj.kurs_id=k.id
+  WHERE kb.wahl_id='$wahl_id'
+END;
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  $ret=array();
+  while($row = mysql_fetch_object($ergebnis)) {
+    if (!isset($ret[$row->id])) $ret[$row->id]=array();
+    $ret[$row->id][$row->kuerzel][]=$row->jahrgang;
   }
   return $ret;
 }
@@ -177,11 +211,9 @@ function wahl_einstellungen($wahl_id) {
     if ($_POST['enddatum']!="") $cmd.=" enddatum='".$_POST['enddatum']."',";
     if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."'";
     $cmd.=" WHERE id='$wahl_id'";
-    //echo $cmd."<br>";
     mysql_query($cmd) or die (mysql_error());
     echo "Die ge&auml;nderten Einstellungen wurden gespeichert.<br>";
   }
-  //$cmd="SELECT DATE_FORMAT(startdatum,'%d.%m.%y %k:%i') as startdatum,DATE_FORMAT(SUBTIME(enddatum,'00:01'),'%d.%m.%y %k:%i') AS enddatum,name,bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
   $cmd="SELECT startdatum, enddatum,name, bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if ($row = mysql_fetch_object($ergebnis)) {
