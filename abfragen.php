@@ -29,8 +29,8 @@ END;
 function kuerzeljahr_abfrage($wahl_id) {
   $cmd=<<<END
   SELECT kb.id, kj.jahrgang, k.kuerzel FROM kurs_beschreibungen AS kb
-  JOIN kurse AS k ON k.beschr_id=kb.id
-  JOIN kurs_jahrgang AS kj ON kj.kurs_id=k.id
+  LEFT JOIN kurse AS k ON k.beschr_id=kb.id
+  LEFT JOIN kurs_jahrgang AS kj ON kj.kurs_id=k.id
   WHERE kb.wahl_id='$wahl_id'
 END;
   $ergebnis = mysql_query($cmd) or die (mysql_error());
