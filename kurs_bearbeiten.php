@@ -3,32 +3,70 @@ session_start();
 include 'db_connect.php';
 
 /**
- * Es wird getestet, ob die Kuerzelliste 
+ * Es wird getestet, ob die eingegebene Kuerzelliste 
  * - nicht leer ist und
  * - keine Kürzel enthält, die bei anderen Kursen verwendet werden.
  * @param beschr_id ID des bearbeiteten Kurses
- * @param kuerzelliste Durch Komma getrennte Liste von Kürzeln
- * @return array aus einzelnen Kürzeln bzw. NULL bei Fehler.
+ * @param $eingabe Array mit keys "kuerzel" und "jahrgaenge"
+ * @return array ("krz"=>("bloecke"=>..., "jahre"=>)) bzw. NULL bei Fehler.
  */
  
-function kuerzel_abfrage($beschr_id, $kuerzelliste) {
-  $kuerzel=array_map('trim',split(",",$kuerzelliste));
-  if ($kuerzelliste=="" || sizeof($kuerzel)<=0) {
-    echo "Es muss mindestens ein K&uuml;rzel eingegeben werden.<br>";
-    return FALSE;
-  }
-  $cmd="SELECT kuerzel,beschr_id FROM kurse JOIN kurs_beschreibungen ON kurse.beschr_id=kurs_beschreibungen.id AND kurs_beschreibungen.wahl_id='".$_SESSION['wahl_id']."'";
-  $ergebnis = mysql_query($cmd) or die (mysql_error());
+function eingabe_check($beschr_id, $eingabe) {
+  $kuerzel=array_map('trim',$eingabe["kuerzel"]);
+  $jahre=$eingabe["jahrgaenge"];
+  $bloecke=$eingabe["bloecke"];
   $ok=TRUE;
+  $ret=array();
+  // Mindestens ein Kuerzel vorhanden?
+  $n=0;
+  foreach ($kuerzel as $k) {
+    $ret[$k]=array();
+    $ret[$k]["jahre"]=array();
+    $ret[$k]["bloecke"]=array();
+    if ($k!="") ++$n;
+  }
+  if ($n<=0) {
+    echo "Es muss mindestens ein K&uuml;rzel eingegeben werden.<br>";
+    $ok=FALSE;
+  }
+  // Jahrgänge im richtigen Format?
+  foreach($jahre as $i=>$jstring) if ($jstring) {
+    $jarr=array_map('trim',split(",",$jstring));
+    foreach($jarr as $j) {
+      if (!preg_match("/^[0-9]+([a-z]|-[0-9]+)?$/",$j,$matches)) {
+        echo "unzulaessige Jahrgangsangabe $j in $jstring<br>";
+        $ok=FALSE;
+      }
+      if (preg_match("/^([0-9]+)-([0-9]+)$/",$j,$matches)) {
+        foreach (range($matches[1],$matches[2]) as $j)
+          $ret[$kuerzel[$i]]["jahre"][]=$j;
+      } else {
+        $ret[$kuerzel[$i]]["jahre"][]=$j;
+      }
+    }
+  }
+  // Blöcke von 1-4? (TODO: tatsächliche Block-Anzahl verwenden!)
+  foreach($bloecke as $i=>$b) if ($b) {
+    $b=trim($b);
+    if ($b!="" && !preg_match("/^[1-4]$/",$b)) {
+      echo "unzulaessige Block-Angabe '$b' in Zeile $i<br>";
+      $ok=FALSE;
+    }
+    $ret[$kuerzel[$i]]["bloecke"]=$b;
+  }
+  // Kürzel aus anderen Kursen verwendet?
+  $cmd="SELECT kuerzel,titel,beschr_id FROM kurse JOIN kurs_beschreibungen ON kurse.beschr_id=kurs_beschreibungen.id AND kurs_beschreibungen.wahl_id='".$_SESSION['wahl_id']."'";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
   while ($row = mysql_fetch_object($ergebnis)) {
     foreach ($kuerzel as $k) {
       if ($row->kuerzel==$k && $row->beschr_id!=$beschr_id) {
-        echo "Kuerzel $k existiert schon! ".$row->beschr_id." ".$beschr_id."<br>";
+        echo "Kuerzel '$k' existiert schon im Kurs '".$row->titel."'! <br>";
         $ok=FALSE;
       }
     }
   }
-  return $ok?$kuerzel : NULL;
+  unset($ret[""]);
+  return $ok?$ret : NULL;
 }
 
 /**
@@ -50,12 +88,25 @@ function kurse_loeschen($beschr_id) {
 
 function kurs_anzeigen($beschr_id, $eingabe) {
   if ($beschr_id==-1 && !$eingabe)
-    $eingabe=array("titel"=>"", "beschreibung"=>"","kuerzel"=>"");
-  if ($eingabe) { // neuen Kurs eingeben
-    $row=(object) $eingabe;
-  } else {
+    $eingabe=array("titel"=>"", "beschr"=>"","kuerzel"=>array(),"bloecke"=>array(),"jahrgaenge"=>array());
+  if ($eingabe) { // neuen Kurs eingeben oder vorherige falsche Eingabe überarbeiten
+    $titel=$eingabe["titel"];
+    $beschr=$eingabe["beschr"];
+    foreach($eingabe["kuerzel"] as $i=>$k) {
+      $jahrgaenge[$k]=$eingabe["jahrgaenge"][$i];
+      $bloecke[$k]=$eingabe["bloecke"][$i];
+    }
+  } else { // Kurse aus DB anzeigen
+    $nbloecke=0;
+    $cmd="SELECT bloecke FROM wahl_einstellungen as we JOIN kurs_beschreibungen AS kb ON we.id=kb.id WHERE kb.id=$beschr_id";
+    $ergebnis = mysql_query($cmd);
+    if ($row = mysql_fetch_object($ergebnis)) {
+      $nbloecke=$row->bloecke;
+    } else {
+      die ("Block-Anzahl unbekannt bei Kurs Nr. $beschr_id<br>");
+    }
     $abfrage = <<<END
-SELECT kuerzel, GROUP_CONCAT(kurs_jahrgang.jahrgang) AS jahrgaenge, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung,
+SELECT kuerzel, block, GROUP_CONCAT(kurs_jahrgang.jahrgang) AS jahrgaenge, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung,
 kurs_beschreibungen.wahl_id
 FROM kurs_beschreibungen JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
 LEFT JOIN kurs_jahrgang ON kurs_jahrgang.kurs_id=kurse.id
@@ -68,16 +119,31 @@ END;
       $titel=$row->titel;
       $beschr=$row->beschreibung;
       $jahrgaenge[$row->kuerzel]=$row->jahrgaenge;
+      $bloecke[$row->kuerzel]=$row->block;
     }
   }
-  $kuerzel=join("/",array_keys($jahrgaenge));
-  $jahrgaenge=join("/",$jahrgaenge);
+  $blockheader="<th>Block</th>";
+  if ($nbloecke<=1) $blockheader=""; // Block nur anzeigen wenn mehr als 1 Block vorhanden
+  $kj_table="<table border='1'><tr><th>Kuerzel</th>$blockheader<th>Jahrgaenge</th></tr>\n";
+  if (!isset($jahrgaenge[''])) {
+    $jahrgaenge['']='';
+    $bloecke['']='';
+  }
+  foreach ($jahrgaenge as $k=>$j) {
+    $blockfeld="<td><input type='text' name='bloecke[]' size='2' value='".$bloecke[$k]."'></td>";
+    if ($nbloecke<=1) $blockfeld="<input type='hidden' name='bloecke[]' size='2' value='1'>";
+    $kj_table.=<<<END
+    <tr><td><input type='text' name='kuerzel[]' size='4' value='$k'></td>
+    $blockfeld
+    <td><input type='text' name='jahrgaenge[]' value='$j'></td></tr>
+END;
+  }
+  $kj_table.="</table>";
   return <<<END
 <form action='kurs_bearbeiten.php' method='post'>
   <label> Titel: <input type='text' name='titel' value='$titel'> </label><br>
   <label> Beschreibung: <textarea name='beschr' rows='4' cols='80'>$beschr</textarea></label><br>
-  <label> K&uuml;rzel: <input type='text' name='kuerzel' value='$kuerzel'></label><br>
-  <label> Jahrg&auml;nge: <input type='text' name='jahrgaenge' value='$jahrgaenge'></label><br>
+  $kj_table
   <input type='submit' name='bearbeitet' value='Speichern'>
   <input type='submit' name='bearbeitet' value='Cancel'>
 </form>
@@ -120,7 +186,6 @@ END;
     include 'wahl_bearbeiten.php';
     exit;
   } elseif (isset($_POST['delete_cancel'])) {
-    print_r($_SESSION);
     include 'wahl_bearbeiten.php';
     exit;
   } else {
@@ -128,8 +193,8 @@ END;
   }
 } else { // Seite hat sich nach Kursbearbeitung selbst aufgerufen
   if ($_POST['bearbeitet']=="Speichern") {
-    $eingabe=array("titel"=>$_POST["titel"], "beschreibung"=>$_POST["beschr"],"kuerzel"=>$_POST["kuerzel"]);
-    if (!$kuerzelarray=kuerzel_abfrage($_SESSION['kurs_id'],$_POST['kuerzel'])) {
+    $eingabe=$_POST; //array("titel"=>$_POST["titel"], "beschreibung"=>$_POST["beschr"],"kuerzel"=>$_POST["kuerzel"],"jahrgaenge"=>$_POST["jahrgaenge"]);
+    if (!$save=eingabe_check($_SESSION['kurs_id'],$eingabe)) {
       echo kurs_anzeigen($_SESSION['kurs_id'],$eingabe);
       exit;
     }
@@ -140,25 +205,27 @@ VALUES('{$_SESSION['wahl_id']}','{$_POST['titel']}','{$_POST['beschr']}')
 END;
       mysql_query($cmd) or die (mysql_error());
       $_SESSION['kurs_id']=mysql_insert_id();
+      echo "Neuer Kurs ".$_SESSION['kurs_id']." wurde eingetragen.<br>";
     } else { // Vorhandenen Kurs aktualisieren
       $cmd=<<<END
 UPDATE kurs_beschreibungen SET titel='{$_POST['titel']}', beschreibung='{$_POST['beschr']}'
 WHERE id='{$_SESSION['kurs_id']}'
 END;
+      mysql_query($cmd) or die (mysql_error());
     }
-    mysql_query($cmd) or die (mysql_error());
     // Kürzel usw. für neuen oder existierenden Kurs löschen und neu eintragen
     kurse_loeschen($_SESSION['kurs_id']);
-    foreach ($kuerzelarray as $k) {
+    foreach (array_keys($save) as $k) {
+      $b=$save[$k]["bloecke"];
       $cmd=<<<END
-INSERT INTO kurse (beschr_id,kuerzel,block) VALUES('{$_SESSION['kurs_id']}','$k','1')
+INSERT INTO kurse (beschr_id,kuerzel,block) VALUES('{$_SESSION['kurs_id']}','$k','$b')
 END;
-      // TODO: block Eingabemöglichkeit + Speichern
       mysql_query($cmd) or die (mysql_error());
       $kurs_id=mysql_insert_id();
-      $cmd="INSERT INTO kurs_jahrgang (kurs_id,jahrgang) VALUES ('$kurs_id','')";
-      // TODO: Jahrgänge aus Textfeld übernehmen
-      mysql_query($cmd) or die ($cmd.": ".mysql_error());
+      foreach (array_unique($save[$k]["jahre"]) as $j) {
+        $cmd="INSERT INTO kurs_jahrgang (kurs_id,jahrgang) VALUES ('$kurs_id','$j')";
+        mysql_query($cmd) or die ($cmd.": ".mysql_error());
+      }
     }
     echo "Der Kurs wurde gespeichert.<br>";
   } else {
