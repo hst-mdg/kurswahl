@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db_connect.php';
+include_once('abfragen.php');
 
 /**
  * Es wird getestet, ob die eingegebene Kuerzelliste 
@@ -22,7 +23,7 @@ function eingabe_check($beschr_id, $eingabe) {
   foreach ($kuerzel as $k) {
     $ret[$k]=array();
     $ret[$k]["jahre"]=array();
-    $ret[$k]["bloecke"]=array();
+    $ret[$k]["bloecke"]="";
     if ($k!="") ++$n;
   }
   if ($n<=0) {
@@ -69,15 +70,21 @@ function eingabe_check($beschr_id, $eingabe) {
   return $ok?$ret : NULL;
 }
 
-/**
- * Lösche Einträge in den Tabellen kurse und kurs_jahrgang
- * @param $beschr_id ID der Kurs-Beschreibung, zu der alle Kurse gelöscht werden.
- */
-function kurse_loeschen($beschr_id) {
-  $cmd="DELETE kurs_jahrgang FROM kurs_jahrgang JOIN kurse JOIN kurs_beschreibungen ON kurs_id=kurse.id AND beschr_id=kurs_beschreibungen.id WHERE beschr_id='$beschr_id'";
-  mysql_query($cmd) or die ($cmd.": ".mysql_error());
-  $cmd="DELETE FROM kurse WHERE beschr_id='$beschr_id'";
-  mysql_query($cmd) or die ($cmd.": ".mysql_error());
+function zusaetze_anzeigen($beschr_id, $eingabe) {
+  $zusaetze=zusatz_abfrage($_SESSION["wahl_id"],TRUE);
+  $gewaehlt=zusatz_abfrage($_SESSION["wahl_id"],FALSE);
+  $ret="<table border='0'><tr>\n";
+  foreach ($zusaetze as $n=>$wa) {
+    $ret.="  <td><fieldset><legend>Zusatz $n:</legend>\n";
+    foreach ($wa as $id=>$w) {
+      if ($eingabe) $checked=(isset($eingabe["zusatz_$id"]) && in_array($id,$eingabe["zusatz_$id"]))?"checked":"";
+      else $checked=isset($gewaehlt[$n][$beschr_id][$id])?"checked":"";
+      $ret.="    <input type='checkbox' name='zusatz_{$id}[]' value='$id' $checked>$w<br>\n";
+    }
+    $ret.="  </fieldset></td>\n";
+  }
+  $ret.="</tr></table>\n";
+  return $ret;
 }
 
 /**
@@ -87,6 +94,14 @@ function kurse_loeschen($beschr_id) {
  */
 
 function kurs_anzeigen($beschr_id, $eingabe) {
+  $nbloecke=0;
+  $cmd="SELECT bloecke FROM wahl_einstellungen WHERE id=".$_SESSION['wahl_id'];
+  $ergebnis = mysql_query($cmd);
+  if ($row = mysql_fetch_object($ergebnis)) {
+    $nbloecke=$row->bloecke;
+  } else {
+    die ("Block-Anzahl unbekannt bei Kurs Nr. $beschr_id<br>");
+  }
   if ($beschr_id==-1 && !$eingabe)
     $eingabe=array("titel"=>"", "beschr"=>"","kuerzel"=>array(),"bloecke"=>array(),"jahrgaenge"=>array());
   if ($eingabe) { // neuen Kurs eingeben oder vorherige falsche Eingabe überarbeiten
@@ -97,14 +112,6 @@ function kurs_anzeigen($beschr_id, $eingabe) {
       $bloecke[$k]=$eingabe["bloecke"][$i];
     }
   } else { // Kurse aus DB anzeigen
-    $nbloecke=0;
-    $cmd="SELECT bloecke FROM wahl_einstellungen as we JOIN kurs_beschreibungen AS kb ON we.id=kb.id WHERE kb.id=$beschr_id";
-    $ergebnis = mysql_query($cmd);
-    if ($row = mysql_fetch_object($ergebnis)) {
-      $nbloecke=$row->bloecke;
-    } else {
-      die ("Block-Anzahl unbekannt bei Kurs Nr. $beschr_id<br>");
-    }
     $abfrage = <<<END
 SELECT kuerzel, block, GROUP_CONCAT(kurs_jahrgang.jahrgang) AS jahrgaenge, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung,
 kurs_beschreibungen.wahl_id
@@ -124,7 +131,7 @@ END;
   }
   $blockheader="<th>Block</th>";
   if ($nbloecke<=1) $blockheader=""; // Block nur anzeigen wenn mehr als 1 Block vorhanden
-  $kj_table="<table border='1'><tr><th>Kuerzel</th>$blockheader<th>Jahrgaenge</th></tr>\n";
+  $kj_table="<table border='1'><tr><th>K&uuml;rzel</th>$blockheader<th>Jahrg&auml;nge</th></tr>\n";
   if (!isset($jahrgaenge[''])) {
     $jahrgaenge['']='';
     $bloecke['']='';
@@ -139,11 +146,13 @@ END;
 END;
   }
   $kj_table.="</table>";
+  $zusaetze=zusaetze_anzeigen($beschr_id, $eingabe);
   return <<<END
 <form action='kurs_bearbeiten.php' method='post'>
   <label> Titel: <input type='text' name='titel' value='$titel'> </label><br>
   <label> Beschreibung: <textarea name='beschr' rows='4' cols='80'>$beschr</textarea></label><br>
   $kj_table
+  $zusaetze
   <input type='submit' name='bearbeitet' value='Speichern'>
   <input type='submit' name='bearbeitet' value='Cancel'>
 </form>
@@ -177,11 +186,7 @@ $liste<br>
 </form>
 END;
   } elseif (isset($_POST['delete_confirm'])) {
-    $cmd="DELETE FROM schueler_wahl WHERE kurs_id='{$_POST['delete_confirm']}'";
-    mysql_query($cmd) or die ($cmd.": ".mysql_error());
-    kurse_loeschen($_POST['delete_confirm']);
-    $cmd="DELETE FROM kurs_beschreibungen WHERE id='{$_POST['delete_confirm']}'";
-    mysql_query($cmd) or die ($cmd.": ".mysql_error());
+    kurse_loeschen($_POST['delete_confirm'],TRUE);
     echo "Der Kurs wurde gel&ouml;scht.";
     include 'wahl_bearbeiten.php';
     exit;
@@ -213,19 +218,32 @@ WHERE id='{$_SESSION['kurs_id']}'
 END;
       mysql_query($cmd) or die (mysql_error());
     }
-    // Kürzel usw. für neuen oder existierenden Kurs löschen und neu eintragen
-    kurse_loeschen($_SESSION['kurs_id']);
+    // Kürzel, Block,Jahrgänge für neuen oder existierenden Kurs löschen und neu eintragen
+    kurse_loeschen($_SESSION['kurs_id'],FALSE);
     foreach (array_keys($save) as $k) {
       $b=$save[$k]["bloecke"];
       $cmd=<<<END
 INSERT INTO kurse (beschr_id,kuerzel,block) VALUES('{$_SESSION['kurs_id']}','$k','$b')
 END;
-      mysql_query($cmd) or die (mysql_error());
+      mysql_query($cmd) or die ("$cmd: ".mysql_error());
       $kurs_id=mysql_insert_id();
       foreach (array_unique($save[$k]["jahre"]) as $j) {
         $cmd="INSERT INTO kurs_jahrgang (kurs_id,jahrgang) VALUES ('$kurs_id','$j')";
         mysql_query($cmd) or die ($cmd.": ".mysql_error());
       }
+    }
+    // Zusätze löschen und neu eintragen
+    $cmd=<<<END
+DELETE FROM kurs_zusaetze WHERE kurs_id='{$_SESSION['kurs_id']}'
+END;
+    mysql_query($cmd) or die ($cmd.": ".mysql_error());
+    $cmd="INSERT INTO kurs_zusaetze (kurs_id,zusatz_wert_id) VALUES ";
+    foreach ($eingabe as $e=>$v) if (preg_match("/^zusatz_(\d+)$/",$e,$matches)) {
+      foreach ($v as $wert) $cmd.="(".$_SESSION['kurs_id'].",$wert),";
+    }
+    if (substr($cmd,-1)==",") {
+      $cmd=substr($cmd,0,-1);
+      mysql_query($cmd) or die ($cmd.": ".mysql_error());
     }
     echo "Der Kurs wurde gespeichert.<br>";
   } else {
