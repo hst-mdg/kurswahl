@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 19. Okt 2015 um 22:02
+-- Erstellungszeit: 22. Okt 2015 um 18:19
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS `zusatz_werte` (
 -- Indexes for table `kurse`
 --
 ALTER TABLE `kurse`
- ADD PRIMARY KEY (`id`,`kuerzel`,`beschr_id`), ADD UNIQUE KEY `wahl_id` (`kuerzel`), ADD KEY `beschr_id` (`beschr_id`);
+ ADD PRIMARY KEY (`id`,`kuerzel`,`beschr_id`), ADD KEY `beschr_id` (`beschr_id`);
 
 --
 -- Indexes for table `kurs_beschreibungen`
@@ -185,13 +185,13 @@ ALTER TABLE `wahl_einstellungen`
 -- Indexes for table `zusatz`
 --
 ALTER TABLE `zusatz`
- ADD PRIMARY KEY (`id`,`wahl_id`), ADD UNIQUE KEY `name` (`name`), ADD KEY `wahl_id` (`wahl_id`);
+ ADD PRIMARY KEY (`id`,`wahl_id`,`name`), ADD KEY `wahl_id` (`wahl_id`);
 
 --
 -- Indexes for table `zusatz_werte`
 --
 ALTER TABLE `zusatz_werte`
- ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `wert` (`wert`), ADD UNIQUE KEY `zusatz_id` (`zusatz_id`,`wert`), ADD UNIQUE KEY `zusatz_id_2` (`zusatz_id`,`wert`);
+ ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `zusatz_id` (`zusatz_id`,`wert`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -253,8 +253,8 @@ ADD CONSTRAINT `kurs_jahrgang_ibfk_1` FOREIGN KEY (`kurs_id`) REFERENCES `kurse`
 -- Constraints der Tabelle `kurs_zusaetze`
 --
 ALTER TABLE `kurs_zusaetze`
-ADD CONSTRAINT `kurs_zusaetze_ibfk_3` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE,
-ADD CONSTRAINT `kurs_zusaetze_ibfk_2` FOREIGN KEY (`zusatz_wert_id`) REFERENCES `zusatz_werte` (`id`) ON UPDATE CASCADE;
+ADD CONSTRAINT `kurs_zusaetze_ibfk_2` FOREIGN KEY (`zusatz_wert_id`) REFERENCES `zusatz_werte` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `kurs_zusaetze_ibfk_3` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints der Tabelle `schueler_wahl`
