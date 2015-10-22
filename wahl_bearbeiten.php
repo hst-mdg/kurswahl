@@ -1,7 +1,7 @@
 <?php
 if (!isset($_SESSION)) session_start();
 
-include 'abfragen.php';
+include_once('abfragen.php');
 
 /**
  * Es werden alle Kursbeschreibungen zur gewählten wahl_id angezeigt.
@@ -39,8 +39,18 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
     if (isset($jahr)) $klasse.=",'$jahr'";
     $jahrgang_cond="(jahrgang IN ($klasse, '') OR ISNULL(jahrgang))";
   }
-  $zusaetze=zusatz_abfrage($wahl_id);
-  $zusaetze=array_map(function($a){ return join("/",$a); },$zusaetze);
+  $zusaetze=zusatz_abfrage($wahl_id,FALSE);
+  $zusatz_header="";
+  $zusatz_add="";
+  $zusatz_eintraege=array();
+  foreach ($zusaetze as $name=>$z_arr) {
+    $zusatz_header.="<th>$name</th>";
+    $zusatz_add.="<td>&nbsp;</td>";
+    $z_arr=array_map(function($a){ return join("/",$a); },$z_arr);
+    foreach ($z_arr as $kursid=>$z) {
+      $zusatz_eintraege[$name][$kursid]="<td>$z</td>";
+    }
+  }
   $tmp=kuerzeljahr_abfrage($wahl_id);
   foreach ($tmp as $id=>$a) {
     $kuerzel[$id]=join("<br>",array_keys($a));
@@ -81,18 +91,20 @@ $ret.=<<<END
 <table border='1'>
   <tr>$col1
     <th>Titel</th>
-    <th>Kuerzel</th>
-    <th>Jahre</th>
+    <th>K&uuml;rzel</th>
+    <th>Jahrg&auml;nge</th>
     <th>Beschreibung</th>
-    <th>Bereich</th>
+    $zusatz_header
   </tr>
 END;
   if ($lehrer) {
     $ret.="<td><button type='submit' name='add' value='-1'><image src='img/add.png'></button></td></button></td>"
-      ."<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>";
+      ."<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>$zusatz_add";
   }
   while($row = mysql_fetch_object($ergebnis)) {
-    if (!isset($zusaetze[$row->kursid])) $zusaetze[$row->kursid]="---";
+    $zusatz_eintrag="";
+    foreach (array_keys($zusaetze) as $name)
+      $zusatz_eintrag.=isset($zusatz_eintraege[$name][$row->kursid])?$zusatz_eintraege[$name][$row->kursid]:"<td>&nbsp;</td>";
     if ($lehrer) {
       $button="<td><button type='submit' name='edit' value='".$row->kursid."'><image src='img/edit.png'></button>"
         ."<button type='submit' name='delete' value='".$row->kursid."'><image src='img/remove.png'></button></td>";
@@ -110,13 +122,15 @@ END;
     <td>{$kuerzel[$row->kursid]}&nbsp;</td>
     <td>{$jahre[$row->kursid]}&nbsp;</td>
     <td>$row->beschreibung &nbsp;</td>
-    <td>{$zusaetze[$row->kursid]} &nbsp;</td>
+    $zusatz_eintrag
   </tr>\n
 EOF;
   }
   $ret.="</table><br>\n";
   if (!$lehrer) {
     $ret.="<input type='submit' name='kurs_speichern' value='Speichern'><br>";
+  } else {
+    $ret.="<button type='submit' name='delete' value='%'><image src='img/remove.png'>ALLES LOESCHEN</button></td>";
   }
   $ret.="</form>";
   return $ret;
@@ -128,7 +142,7 @@ EOF;
  */
 function wahl_teilnahme($wahl_id) {
   $schuelername=$_SESSION['schuelername'];
-  $wahlname="???"; $enddatum="???";
+  $wahlname=""; $enddatum="";
   $block=1;
   if (isset($_SESSION['block']))
     $block=$_SESSION['block'];
@@ -137,8 +151,6 @@ function wahl_teilnahme($wahl_id) {
   if ($row = mysql_fetch_object($ergebnis)) {
     $wahlname=$row->name;
     $enddatum=$row->enddatum;
-  } else {
-    die ("Fehler: Die Wahl Nr. $wahl_id wurde noch nicht angelegt.");
   }
   if (!isset($_POST['kurs_speichern'])) { // Noch keine Eingabe
     echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
@@ -165,39 +177,66 @@ function wahl_teilnahme($wahl_id) {
  */
 function wahl_einstellungen($wahl_id) {
   if (isset($_POST['wahleinstellungen_speichern'])) {
-    $cmd="UPDATE  wahl_einstellungen SET ";
-    if ($_POST['name']!="") $cmd.=" name='".$_POST['name']."',";
-    if ($_POST['startdatum']!="") $cmd.=" startdatum='".$_POST['startdatum']."',";
-    if ($_POST['enddatum']!="") $cmd.=" enddatum='".$_POST['enddatum']."',";
-    if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."'";
-    $cmd.=" WHERE id='$wahl_id'";
-    mysql_query($cmd) or die (mysql_error());
+    if ($wahl_id>0) {
+      $cmd="UPDATE  wahl_einstellungen SET ";
+      if ($_POST['name']!="") $cmd.=" name='".$_POST['name']."',";
+      if ($_POST['startdatum']!="") $cmd.=" startdatum='".$_POST['startdatum']."',";
+      if ($_POST['enddatum']!="") $cmd.=" enddatum='".$_POST['enddatum']."',";
+      if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."'";
+      $cmd.=" WHERE id='$wahl_id'";
+    } else {
+      $cmd=<<<END
+      INSERT INTO wahl_einstellungen (name,startdatum,enddatum,bloecke)
+      VALUES ('{$_POST['name']}','{$_POST['startdatum']}','{$_POST['enddatum']}','{$_POST['bloecke']}')
+END;
+    }
+    mysql_query($cmd) or die ("$cmd: ".mysql_error());
+    if ($wahl_id<0) {
+      $wahl_id=mysql_insert_id();
+      $_SESSION["wahl_id"]=$wahl_id;
+    }
     echo "Die ge&auml;nderten Einstellungen wurden gespeichert.<br>";
+  } else if (isset($_POST['wahl_loeschen'])) {
+    echo "Wirklich l&ouml;schen?!?";
+    echo "<form action='#' method='post'>"
+    ."<input type='submit' name='wahl_loeschen_ok' value='Ja'>"
+    ."<input type='hidden' name='lehrername' value='".$_SESSION['lehrername']."'>"
+    ."<button name='wahl_id' value='".$_SESSION['wahl_id']."'>Nein</button></form>";
+    exit;
+  } else if (isset($_POST['wahl_loeschen_ok'])) {
+    kurse_loeschen('%',TRUE);
+    $cmd="DELETE FROM wahl_einstellungen WHERE id=$wahl_id";
+    mysql_query($cmd) or die ("$cmd: ".mysql_error());
+    include_once("wahl_festlegen.php");
+    exit;
   }
   $cmd="SELECT startdatum, enddatum,name, bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
-  if ($row = mysql_fetch_object($ergebnis)) {
-    echo <<<END
+  if (!$row = mysql_fetch_object($ergebnis)) {
+    $row=(object)array("name"=>"","startdatum"=>"","enddatum"=>"", "bloecke"=>1);
+  }
+  echo <<<END
 <form action="wahl_bearbeiten.php" id="einstellungen" method="post">
   <fieldset>
     <legend>Wahleinstellungen</legend>
-    <label>Bezeichnung: <input type="text" name="name" placeholder="$row->name"> <label> <br>
-    <label>Startdatum: <input type="text" name="startdatum" placeholder="$row->startdatum"> </label> <br>
-    <label>Enddatum:   <input type="text" name="enddatum" placeholder="$row->enddatum"> </label> <br>
-    <label>Anzahl Bloecke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
+    <label>Bezeichnung: <input type="text" name="name" value="$row->name"> <label> <br>
+    <label>Startdatum: <input type="text" name="startdatum" value="$row->startdatum"> </label> <br>
+    <label>Enddatum:   <input type="text" name="enddatum" value="$row->enddatum"> </label> <br>
+    <label>Anzahl Bl&ouml;cke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
+    <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?">
   </fieldset>
 </form>
 END;
-  } else {
-    die("Fehler: Die Wahl $wahl_id wurde nicht angelegt.<br>");
-  }
   if ($row = mysql_fetch_object($ergebnis)) {
     echo "Fehler: Zur Wahl $wahl_id gibt es mehrere Eintr&auml;ge!<br>";
   }
-  echo "Folgende Kurse koennen gew&auml;hlt werden:<br>";
-  echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
+  if ($wahl_id>=0) {
+    echo "Folgende Kurse k&ouml;nnen gew&auml;hlt werden:<br>";
+    echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
+    echo "<form action='kurse_einlesen.php' method='post'><input type='submit' name='einlesen' value='Text-Datei einlesen'></form>";
+  }
 }
 
 unset($_SESSION['kurs_id']);
@@ -211,8 +250,10 @@ include 'db_connect.php';
 
 if (isset($_SESSION['lehrername'])) {  // Bearbeitung durch Lehrer
   wahl_einstellungen($wahl_id);
+  echo "<form action='wahl_festlegen.php' method='post'><input type='submit' value='Andere Wahl bearbeiten'><input type='hidden' name='lehrername' value='".$_SESSION["lehrername"]."'></form>";
 } else {                            // Bearbeitung durch Schüler
   wahl_teilnahme($wahl_id);
+  echo "<form action='wahl_festlegen.php' method='post'><input type='submit' value='Andere Wahl bearbeiten'><input type='hidden' name='schuelername' value='".$_SESSION["schuelername"]."'></form>";
 }
 
 ?>
