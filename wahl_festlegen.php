@@ -1,5 +1,5 @@
 <?php
-session_start();
+if (!isset($_SESSION)) session_start();
 include 'db_connect.php';
 
 /**
@@ -38,6 +38,7 @@ END;
 }
 
 unset($_SESSION['wahl_id']);
+unset($_SESSION['kurs_id']);
 // Wahlmöglichkeiten aus DB holen:
 $wahlen=wahlen();
 
@@ -54,5 +55,6 @@ if (isset($_POST['lehrername'])) {
 } else {
   header("Location: login.php");
 }
+echo "<form action='login.php'_logo_guid method='post'><input type='submit' value='Logout'></form>"; 
 
 ?>
