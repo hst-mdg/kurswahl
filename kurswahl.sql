@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 22. Okt 2015 um 18:19
+-- Erstellungszeit: 27. Okt 2015 um 17:23
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -260,8 +260,8 @@ ADD CONSTRAINT `kurs_zusaetze_ibfk_3` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_b
 -- Constraints der Tabelle `schueler_wahl`
 --
 ALTER TABLE `schueler_wahl`
-ADD CONSTRAINT `schueler_wahl_ibfk_3` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE,
-ADD CONSTRAINT `schueler_wahl_ibfk_4` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_beschreibungen` (`id`) ON UPDATE CASCADE;
+ADD CONSTRAINT `schueler_wahl_ibfk_2` FOREIGN KEY (`kurs_id`) REFERENCES `kurse` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `schueler_wahl_ibfk_1` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints der Tabelle `zusatz`
