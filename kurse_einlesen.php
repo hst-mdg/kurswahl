@@ -84,7 +84,7 @@ function db_zusatzfelder_anlegen() { // KB und Bereiche bei neuer Modulwahl eint
     mysql_query($cmd) or die ("Konnte Bereiche-Feld nicht anlegen: $cmd: ".mysql_error());
     $ber_id=mysql_insert_id();
     if ($ber_id<1) die ("falsche ber_id=$ber_id");
-    foreach ([SPRACHLICH,FREMDSPR,MATNAW,GESELLSCHAFT,LERNEN] as $ber) {
+    foreach (array(SPRACHLICH,FREMDSPR,MATNAW,GESELLSCHAFT,LERNEN) as $ber) {
       $cmd="INSERT INTO zusatz_werte (zusatz_id,wert) VALUES('$ber_id','$ber')";
       mysql_query($cmd) or die ("$cmd Fehler bei Bereich-Werten: ".mysql_error());
     }
