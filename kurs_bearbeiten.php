@@ -170,7 +170,7 @@ if (!isset($_POST['bearbeitet'])) {
   if (isset($_POST['edit'])||isset($_POST['add']))
     echo kurs_anzeigen($_SESSION['kurs_id'],NULL);
   elseif (isset($_POST['delete'])) {
-    $cmd="SELECT name,klasse FROM schueler_wahl JOIN schueler WHERE schueler.id=schueler_wahl.schueler_id AND kurs_id='{$_POST['delete']}' GROUP BY name";
+    $cmd="SELECT name,klasse FROM schueler_wahl AS sw JOIN schueler ON schueler.id=sw.schueler_id JOIN kurse ON kurse.id=sw.kurs_id WHERE kurse.beschr_id='{$_POST['delete']}' GROUP BY name";
     $ergebnis = mysql_query($cmd) or die (mysql_error());
     $liste="";
     while ($row = mysql_fetch_object($ergebnis)) {
@@ -210,7 +210,6 @@ VALUES('{$_SESSION['wahl_id']}','{$_POST['titel']}','{$_POST['beschr']}')
 END;
       mysql_query($cmd) or die (mysql_error());
       $_SESSION['kurs_id']=mysql_insert_id();
-      echo "Neuer Kurs ".$_SESSION['kurs_id']." wurde eingetragen.<br>";
     } else { // Vorhandenen Kurs aktualisieren
       $cmd=<<<END
 UPDATE kurs_beschreibungen SET titel='{$_POST['titel']}', beschreibung='{$_POST['beschr']}'

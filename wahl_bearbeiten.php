@@ -13,18 +13,15 @@ include_once('abfragen.php');
  */
 function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
 
-  $abfrage="SELECT bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
-  $ergebnis = mysql_query($abfrage) or die (mysql_error());
-  if ($row = mysql_fetch_object($ergebnis)) {
-    $nbloecke=$row->bloecke;
-  }
-
+  $nbloecke=block_anzahl($wahl_id);
+  
   if (!$lehrer) { // Gewählte Kurse des Schülers abfragen und in $selected speichern.
     $selected=array();
-    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_SESSION['schuelername']."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
+    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_SESSION['schuelername']
+      ."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
     $ergebnis = mysql_query($abfrage) or die (mysql_error());
     while($row = mysql_fetch_object($ergebnis)) {
-      $selected[$row->kurs_id][$row->prioritaet]=true;
+      $selected[$row->kurs_id][$row->prioritaet]=true; // kurs_id aus 'kurse', nicht aus 'kurs_beschreibungen' !
     }
   }
   
@@ -60,13 +57,13 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
       }
   }
   $abfrage = <<<END
-SELECT kurs_beschreibungen.id as kursid, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
+SELECT kurse.beschr_id, kurse.id AS kursid, kurse.block, kurs_beschreibungen.titel, kurs_beschreibungen.beschreibung
 FROM kurs_beschreibungen
 LEFT JOIN kurse ON kurs_beschreibungen.id=kurse.beschr_id
 LEFT JOIN kurs_jahrgang ON kurse.id=kurs_jahrgang.kurs_id
 WHERE kurs_beschreibungen.wahl_id='$wahl_id'
 AND $jahrgang_cond
-GROUP BY kursid
+GROUP BY kurse.beschr_id
 END;
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
   if (isset($_SESSION['lehrername'])) {
@@ -104,10 +101,10 @@ END;
   while($row = mysql_fetch_object($ergebnis)) {
     $zusatz_eintrag="";
     foreach (array_keys($zusaetze) as $name)
-      $zusatz_eintrag.=isset($zusatz_eintraege[$name][$row->kursid])?$zusatz_eintraege[$name][$row->kursid]:"<td>&nbsp;</td>";
+      $zusatz_eintrag.=isset($zusatz_eintraege[$name][$row->beschr_id])?$zusatz_eintraege[$name][$row->beschr_id]:"<td>&nbsp;</td>";
     if ($lehrer) {
-      $button="<td><button type='submit' name='edit' value='".$row->kursid."'><image src='img/edit.png'></button>"
-        ."<button type='submit' name='delete' value='".$row->kursid."'><image src='img/remove.png'></button></td>";
+      $button="<td><button type='submit' name='edit' value='".$row->beschr_id."'><image src='img/edit.png'></button>"
+        ."<button type='submit' name='delete' value='".$row->beschr_id."'><image src='img/remove.png'></button></td>";
     } else {
       $button="";
       for ($nr=1; $nr<=3; $nr++) {
@@ -115,12 +112,12 @@ END;
         $button.="<td><input type='radio' name='kurswahl_id$nr' value='".$row->kursid."' $checked></td>";
       }
     }
-    $ret.=<<<EOF
+    if ($lehrer || ($row->block == $block)) $ret.=<<<EOF
   <tr>
     $button
     <td>$row->titel</td>
-    <td>{$kuerzel[$row->kursid]}&nbsp;</td>
-    <td>{$jahre[$row->kursid]}&nbsp;</td>
+    <td>{$kuerzel[$row->beschr_id]}&nbsp;</td>
+    <td>{$jahre[$row->beschr_id]}&nbsp;</td>
     <td>$row->beschreibung &nbsp;</td>
     $zusatz_eintrag
   </tr>\n
@@ -130,7 +127,7 @@ EOF;
   if (!$lehrer) {
     $ret.="<input type='submit' name='kurs_speichern' value='Speichern'><br>";
   } else {
-    $ret.="<button type='submit' name='delete' value='%'><image src='img/remove.png'>ALLES LOESCHEN</button></td>";
+    $ret.="<button type='submit' name='delete' value='%' disabled><image src='img/remove.png'>ALLES LOESCHEN</button></td>";
   }
   $ret.="</form>";
   return $ret;
@@ -231,15 +228,15 @@ END;
     <label>Anzahl Bl&ouml;cke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
-    <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?">
+    <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?" disabled>
   </fieldset>
 </form>
 <form action="wahl_ergebnisse.php" method="post">
   <fieldset>
     <legend>Sch&uuml;ler-Eingaben</legend>
     <label>Auswahl der Klasse(n): <select name='klassen[]' multiple> $klassen_options </select> <label> <br>
-    <label>Simulation: Eingaben aller Sch&uuml;ler aus den gew&auml;hlten Klassen zufällig setzen<label> <input type="submit" name="klassen_simulation" value="OK"><br>
-    <label>Anzeige: Eingaben folgender Klassen anzeigen: <input type="submit" name="klassen_anzeigen" value="OK"><br>
+    <label>Zum Testen: Eingaben aller Sch&uuml;ler aus den gew&auml;hlten Klassen zuf&auml;llig setzen<label> <input type="submit" name="klassen_simulation" value="OK"><br>
+    <label>Eingaben der gew&auml;hlten Klassen anzeigen: <input type="submit" name="klassen_anzeigen" value="OK"><br>
   </fieldset>
 </form>
 END;

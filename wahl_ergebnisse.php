@@ -1,11 +1,14 @@
 <?php
 session_start();
 include 'db_connect.php';
+include 'abfragen.php';
 
 function wahlen_anzeigen($klasse, $nbloecke) {
   $wahl123_header="";
   for ($i=1; $i<=$nbloecke; $i++) $wahl123_header.="<th>I</th><th>II</th><th>III</th>";
-  $cmd="SELECT s.name, LTRIM(RIGHT(s.name,LENGTH(s.name) - LOCATE('.',s.name))) AS nachname, k.block, sw.prioritaet, k.kuerzel FROM schueler AS s JOIN schueler_wahl AS sw ON sw.schueler_id=s.id JOIN kurs_beschreibungen AS kb ON sw.kurs_id=kb.id JOIN kurse as k ON kb.id=k.beschr_id WHERE s.klasse='$klasse' ORDER BY nachname";
+  $cmd="SELECT s.name, LTRIM(RIGHT(s.name,LENGTH(s.name) - LOCATE('.',s.name))) AS nachname, k.block, sw.prioritaet, k.kuerzel"
+    ." FROM schueler AS s JOIN schueler_wahl AS sw ON sw.schueler_id=s.id JOIN kurse as k ON sw.kurs_id=k.id "
+    ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id=".$_SESSION['wahl_id']." ORDER BY nachname";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   $wahl=array();
   while($row = mysql_fetch_object($ergebnis)) {
@@ -33,13 +36,14 @@ END;
 
 function zufaellig_setzen($klasse, $nbloecke) {
   // Wahlen der Klasse erst löschen
-  $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.klasse='$klasse'";
+  $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler ON schueler_wahl.schueler_id=schueler.id WHERE schueler.klasse='$klasse'";
   mysql_query($cmd) or die (mysql_error());
   // Wählbare Kurse abfragen
   $auswahl="('$klasse'";
   if (preg_match("/([0-9]+)[a-z]/",$klasse,$matches)) $auswahl.=",'$matches[1]'";
   $auswahl.=")";
-  $cmd="SELECT DISTINCT kb.id,k.block FROM kurs_beschreibungen AS kb JOIN kurse AS k ON k.beschr_id=kb.id JOIN kurs_jahrgang as kj ON kj.kurs_id=k.id WHERE kj.jahrgang IN $auswahl";
+  $cmd="SELECT DISTINCT k.id,k.block FROM kurse AS k JOIN kurs_jahrgang as kj ON kj.kurs_id=k.id "
+    ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE kj.jahrgang IN $auswahl AND kb.wahl_id=".$_SESSION['wahl_id'];
   $ergebnis=mysql_query($cmd) or die (mysql_error());
   $kurse=array();
   while($row = mysql_fetch_object($ergebnis)) $kurse[$row->block][]=$row->id;
@@ -75,11 +79,11 @@ function zufaellig_setzen($klasse, $nbloecke) {
   mysql_query($cmd) or die (mysql_error());
 }
 
-$nbloecke=4; //!!!
+$nbloecke=block_anzahl($_SESSION['wahl_id']);
 $klassen=$_POST['klassen'];
 foreach($klassen as $klasse) {
-  zufaellig_setzen($klasse, $nbloecke);
-  wahlen_anzeigen($klasse, $nbloecke);
+  if (isset($_POST["klassen_simulation"])) zufaellig_setzen($klasse, $nbloecke);
+  if (isset($_POST["klassen_simulation"]) || isset($_POST["klassen_anzeigen"])) wahlen_anzeigen($klasse, $nbloecke);
 }
 
 

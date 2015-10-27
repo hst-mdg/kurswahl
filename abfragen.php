@@ -23,7 +23,6 @@ function zusatz_abfrage($wahl_id, $alle) {
   LEFT JOIN zusatz ON zw.zusatz_id=zusatz.id
   WHERE kb.wahl_id='$wahl_id'
 END;
-// TODO: andere Zusaetze außer "Bereiche"
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   $ret=array();
   while($row = mysql_fetch_object($ergebnis)) {
@@ -31,6 +30,20 @@ END;
     $ret[$row->name][$row->kid][$row->zwid]=$row->wert;
   }
   return $ret;
+}
+
+
+/**
+ * Gibt die Anzahl der Blöcke zurück
+ * @param wahl_id ID der Wahl
+ * @return Anzahl der Blöcke
+ */
+function block_anzahl($wahl_id) {
+  $cmd="SELECT bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  if ($row = mysql_fetch_object($ergebnis)) {
+    return $row->bloecke;
+  } else return 0;
 }
 
 /**
@@ -77,8 +90,9 @@ function zusaetze_loeschen($beschr_id) {
 function kurse_loeschen($beschr_id,$auch_zusaetze=FALSE) {
   if ($auch_zusaetze) {
     zusaetze_loeschen($beschr_id);
-    $cmd="DELETE sw FROM schueler_wahl as sw JOIN kurs_beschreibungen AS kb ON kb.id=sw.kurs_id WHERE kurs_id LIKE '{$beschr_id}' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
+    $cmd="DELETE sw FROM schueler_wahl AS sw JOIN kurse AS k ON sw.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE k.beschr_id LIKE '{$beschr_id}' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
     mysql_query($cmd) or die ($cmd.": ".mysql_error());
+    echo mysql_affected_rows()." Sch&uuml;lerwahlen wurden gel&ouml;scht.<br>";
   }
   $cmd="DELETE kj FROM kurs_jahrgang AS kj JOIN kurse AS k ON kj.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON k.beschr_id=kb.id WHERE kb.id LIKE '$beschr_id' AND wahl_id='".$_SESSION['wahl_id']."'";
   mysql_query($cmd) or die ($cmd.": ".mysql_error());
