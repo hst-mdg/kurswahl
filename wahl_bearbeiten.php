@@ -210,13 +210,19 @@ END;
     include_once("wahl_festlegen.php");
     exit;
   }
+  $cmd="SELECT DISTINCT klasse FROM schueler";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  $klassen_options="";
+  while ($row = mysql_fetch_object($ergebnis)) {
+    $klassen_options.="<option value='".$row->klasse."'>".$row->klasse."</option>\n";
+  }
   $cmd="SELECT startdatum, enddatum,name, bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if (!$row = mysql_fetch_object($ergebnis)) {
     $row=(object)array("name"=>"","startdatum"=>"","enddatum"=>"", "bloecke"=>1);
   }
   echo <<<END
-<form action="wahl_bearbeiten.php" id="einstellungen" method="post">
+<form action="wahl_bearbeiten.php" method="post">
   <fieldset>
     <legend>Wahleinstellungen</legend>
     <label>Bezeichnung: <input type="text" name="name" value="$row->name"> <label> <br>
@@ -226,6 +232,14 @@ END;
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
     <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?">
+  </fieldset>
+</form>
+<form action="wahl_ergebnisse.php" method="post">
+  <fieldset>
+    <legend>Sch&uuml;ler-Eingaben</legend>
+    <label>Auswahl der Klasse(n): <select name='klassen[]' multiple> $klassen_options </select> <label> <br>
+    <label>Simulation: Eingaben aller Sch&uuml;ler aus den gew&auml;hlten Klassen zufällig setzen<label> <input type="submit" name="klassen_simulation" value="OK"><br>
+    <label>Anzeige: Eingaben folgender Klassen anzeigen: <input type="submit" name="klassen_anzeigen" value="OK"><br>
   </fieldset>
 </form>
 END;
