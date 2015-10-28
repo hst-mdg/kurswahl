@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 27. Okt 2015 um 17:23
+-- Erstellungszeit: 28. Okt 2015 um 17:37
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -95,6 +95,28 @@ CREATE TABLE IF NOT EXISTS `schueler_wahl` (
   `block` int(11) NOT NULL DEFAULT '1',
   `prioritaet` int(11) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Trigger `schueler_wahl`
+--
+DELIMITER //
+CREATE TRIGGER `wahl_delete` BEFORE DELETE ON `schueler_wahl`
+ FOR EACH ROW IF (SELECT NOT (NOW() BETWEEN startdatum AND enddatum) FROM wahl_einstellungen AS we JOIN kurs_beschreibungen AS kb ON kb.wahl_id=we.id JOIN kurse AS k ON k.beschr_id=kb.id WHERE k.id=OLD.kurs_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Die Wahl hat noch nicht begonnen oder ist schon beendet', MYSQL_ERRNO = 1001; END IF
+//
+DELIMITER ;
+DELIMITER //
+CREATE TRIGGER `wahl_insert` BEFORE INSERT ON `schueler_wahl`
+ FOR EACH ROW IF (SELECT NOT (NOW() BETWEEN startdatum AND enddatum) FROM wahl_einstellungen AS we JOIN kurs_beschreibungen AS kb ON kb.wahl_id=we.id JOIN kurse AS k ON k.beschr_id=kb.id WHERE k.id=NEW.kurs_id) THEN
+SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Die Wahl hat noch nicht begonnen oder ist schon beendet', MYSQL_ERRNO = 1001;
+END IF
+//
+DELIMITER ;
+DELIMITER //
+CREATE TRIGGER `wahl_update` BEFORE UPDATE ON `schueler_wahl`
+ FOR EACH ROW IF (SELECT NOT (NOW() BETWEEN startdatum AND enddatum) FROM wahl_einstellungen AS we JOIN kurs_beschreibungen AS kb ON kb.wahl_id=we.id JOIN kurse AS k ON k.beschr_id=kb.id WHERE k.id=NEW.kurs_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Die Wahl hat noch nicht begonnen oder ist schon beendet', MYSQL_ERRNO = 1001; END IF
+//
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -260,8 +282,8 @@ ADD CONSTRAINT `kurs_zusaetze_ibfk_3` FOREIGN KEY (`kurs_id`) REFERENCES `kurs_b
 -- Constraints der Tabelle `schueler_wahl`
 --
 ALTER TABLE `schueler_wahl`
-ADD CONSTRAINT `schueler_wahl_ibfk_2` FOREIGN KEY (`kurs_id`) REFERENCES `kurse` (`id`) ON UPDATE CASCADE,
-ADD CONSTRAINT `schueler_wahl_ibfk_1` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE;
+ADD CONSTRAINT `schueler_wahl_ibfk_1` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `schueler_wahl_ibfk_2` FOREIGN KEY (`kurs_id`) REFERENCES `kurse` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints der Tabelle `zusatz`

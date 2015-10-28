@@ -85,7 +85,7 @@ END;
   }
   $ret.="<br>";
 $ret.=<<<END
-<table border='1'>
+<table style="border-collapse: collapse; border: 1px solid black;" border="1">
   <tr>$col1
     <th>Titel</th>
     <th>K&uuml;rzel</th>
@@ -118,7 +118,7 @@ END;
     <td>$row->titel</td>
     <td>{$kuerzel[$row->beschr_id]}&nbsp;</td>
     <td>{$jahre[$row->beschr_id]}&nbsp;</td>
-    <td>$row->beschreibung &nbsp;</td>
+    <td style="font-size: 0.7em">$row->beschreibung &nbsp;</td>
     $zusatz_eintrag
   </tr>\n
 EOF;
@@ -153,14 +153,16 @@ function wahl_teilnahme($wahl_id) {
     echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
   } else { // Speichern der Eingabe
     $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername' AND block='$block'";
-    mysql_query($cmd) or die (mysql_error());
-    for ($wahl123=1; $wahl123<=3; $wahl123++) {
+    if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
+    for ($wahl123=1; $ok&&($wahl123<=3); $wahl123++) {
       if (!isset($_POST['kurswahl_id'.$wahl123])) continue;
       $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet,block) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123,$block FROM schueler WHERE schueler.name='$schuelername'";
-      mysql_query($cmd) or die (mysql_error());
+      if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
     }
-    echo "Deine Wahl wurde gespeichert in Block $block.<br>"; 
-    echo "Du kannst bis $enddatum die Wahl noch &auml;ndern.<br>";
+    if ($ok) {
+      echo "Deine Wahl wurde gespeichert in Block $block.<br>"; 
+      echo "Du kannst bis $enddatum die Wahl noch &auml;ndern.<br>";
+    }
     if (preg_match("/^Block ([0-9]+)$/",$_POST['kurs_speichern'],$matches)) {
       $block=$matches[1];
     }

@@ -36,8 +36,10 @@ END;
 
 function zufaellig_setzen($klasse, $nbloecke) {
   // Wahlen der Klasse erst löschen
-  $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler ON schueler_wahl.schueler_id=schueler.id WHERE schueler.klasse='$klasse'";
-  mysql_query($cmd) or die (mysql_error());
+  $cmd="DELETE sw FROM schueler_wahl AS sw JOIN schueler AS s ON sw.schueler_id=s.id JOIN kurse AS k ON sw.kurs_id=k.id "
+  ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id='.".$_SESSION['wahl_id']."'";
+  if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
+  if (mysql_errno()==1001) return;
   // Wählbare Kurse abfragen
   $auswahl="('$klasse'";
   if (preg_match("/([0-9]+)[a-z]/",$klasse,$matches)) $auswahl.=",'$matches[1]'";
@@ -76,7 +78,7 @@ function zufaellig_setzen($klasse, $nbloecke) {
   }
   $values=substr($values,0,-1);
   $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) VALUES $values";
-  mysql_query($cmd) or die (mysql_error());
+  if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
 }
 
 $nbloecke=block_anzahl($_SESSION['wahl_id']);
