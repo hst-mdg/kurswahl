@@ -108,8 +108,8 @@ function db_zusatzfelder_anlegen() { // KB und Bereiche bei neuer Modulwahl eint
 function db_eintrag($titel,$beschr,$bereich, $quartal_kuerzel,$kb) { // Modul mit Kuerzel(n) usw. eintragen
   global $wahl_id, $bereich_id, $kb_id, $eingetragen;
   if (!isset($eingetragen)) $eingetragen=array();
-  $titel=htmlentities($titel);
-  $beschr=htmlentities($beschr);
+  $titel=htmlentities($titel, ENT_COMPAT | ENT_HTML401, "UTF-8");
+  $beschr=htmlentities($beschr, ENT_COMPAT | ENT_HTML401, "UTF-8");
   $titeleingetragen=FALSE;
   // Kurs mit Quartal, Kürzel und (ggf. mehreren) Jahrgängen eintragen:
   foreach ($quartal_kuerzel as $j=>$qk) {
