@@ -181,9 +181,12 @@ function wahl_einstellungen($wahl_id) {
       if ($_POST['name']!="") $cmd.=" name='".$_POST['name']."',";
       if ($_POST['startdatum']!="") $cmd.=" startdatum='".$_POST['startdatum']."',";
       if ($_POST['enddatum']!="") $cmd.=" enddatum='".$_POST['enddatum']."',";
-      if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."'";
+      if ($_POST['bloecke']!="") $cmd.=" bloecke='".$_POST['bloecke']."',";
+      if ($_POST['min_tn']!="") $cmd.=" min_teilnehmer='".$_POST['min_tn']."',";
+      if ($_POST['max_tn']!="") $cmd.=" max_teilnehmer='".$_POST['max_tn']."',";
+      $cmd=substr($cmd,0,-1);
       $cmd.=" WHERE id='$wahl_id'";
-    } else {
+    } else { // Neue Wahl wird angelegt
       $cmd=<<<END
       INSERT INTO wahl_einstellungen (name,startdatum,enddatum,bloecke)
       VALUES ('{$_POST['name']}','{$_POST['startdatum']}','{$_POST['enddatum']}','{$_POST['bloecke']}')
@@ -215,7 +218,7 @@ END;
   while ($row = mysql_fetch_object($ergebnis)) {
     $klassen_options.="<option value='".$row->klasse."'>".$row->klasse."</option>\n";
   }
-  $cmd="SELECT startdatum, enddatum,name, bloecke FROM wahl_einstellungen WHERE id='$wahl_id'";
+  $cmd="SELECT startdatum, enddatum,name, bloecke, min_teilnehmer, max_teilnehmer FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if (!$row = mysql_fetch_object($ergebnis)) {
     $row=(object)array("name"=>"","startdatum"=>"","enddatum"=>"", "bloecke"=>1);
@@ -228,6 +231,7 @@ END;
     <label>Startdatum: <input type="text" name="startdatum" value="$row->startdatum"> </label> <br>
     <label>Enddatum:   <input type="text" name="enddatum" value="$row->enddatum"> </label> <br>
     <label>Anzahl Bl&ouml;cke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
+    <label>Kursgr&ouml;&szlig;e: <input type="text" size="4" name="min_tn" value="$row->min_teilnehmer"> bis  <input type="text" size="4" name="max_tn" value="$row->max_teilnehmer"> </label> <br>
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
     <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?" disabled>
@@ -238,8 +242,12 @@ END;
     <legend>Sch&uuml;ler-Eingaben</legend>
     <label>Auswahl der Klasse(n): <select name='klassen[]' multiple> $klassen_options </select> <label> <br>
     <label>Zum Testen: Eingaben aller Sch&uuml;ler aus den gew&auml;hlten Klassen zuf&auml;llig setzen<label> <input type="submit" name="klassen_simulation" value="OK"><br>
+    <label>Zum Testen: Eingaben aller Sch&uuml;ler aus den gew&auml;hlten Klassen l&ouml;schen<label> <input type="submit" name="klassen_loeschen" value="OK"><br>
     <label>Eingaben der gew&auml;hlten Klassen anzeigen: <input type="submit" name="klassen_anzeigen" value="OK"><br>
   </fieldset>
+</form>
+<form action="kurs_zuteilung.php" method="post">
+<input type="submit" value="Kurse zuteilen">
 </form>
 END;
   if ($row = mysql_fetch_object($ergebnis)) {
@@ -249,6 +257,7 @@ END;
     echo "Folgende Kurse k&ouml;nnen gew&auml;hlt werden:<br>";
     echo kurs_anzeige($wahl_id,-1,true,"kurs_bearbeiten.php");
     echo "<form action='kurse_einlesen.php' method='post'><input type='submit' name='einlesen' value='Text-Datei einlesen'></form>";
+    //echo "<form action='odt_output.php' method='post'><input type='submit' name='download' value='Download'></form>";
   }
 }
 
