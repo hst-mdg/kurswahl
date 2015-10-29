@@ -101,6 +101,11 @@ function zufaellig_setzen($klasse, $nbloecke) {
 }
 
 $nbloecke=block_anzahl($_SESSION['wahl_id']);
+if (!isset($_POST['klassen'])) {
+  echo "<font color='red'>Es muss eine oder mehrere Klassen aus der Liste gw&auml;hlt werden.</font><br>";
+  include "wahl_bearbeiten.php";
+  exit;
+}
 $klassen=$_POST['klassen'];
 foreach($klassen as $klasse) {
   if (isset($_POST["klassen_loeschen"])) wahlen_loeschen($klasse, $nbloecke);
