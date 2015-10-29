@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 28. Okt 2015 um 17:37
+-- Erstellungszeit: 29. Okt 2015 um 21:41
 -- Server Version: 5.5.44-0ubuntu0.14.04.1
 -- PHP-Version: 5.5.12-2ubuntu4
 
@@ -129,7 +129,9 @@ CREATE TABLE IF NOT EXISTS `wahl_einstellungen` (
   `name` varchar(100) NOT NULL COMMENT 'z.B. "Projektwoche 20xx"',
   `bloecke` int(11) NOT NULL DEFAULT '1' COMMENT 'z.B. 4 (wenn 4 Quartale)',
   `startdatum` datetime NOT NULL COMMENT 'Zeitraum für Wahlen',
-  `enddatum` datetime NOT NULL COMMENT 'Zeitraum für Wahlen'
+  `enddatum` datetime NOT NULL COMMENT 'Zeitraum für Wahlen',
+  `min_teilnehmer` int(11) NOT NULL DEFAULT '0',
+  `max_teilnehmer` int(11) NOT NULL DEFAULT '100'
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 COMMENT='Allgemeine Festlegungen zu einer Kurswahl' ;
 
 -- --------------------------------------------------------
@@ -143,7 +145,7 @@ CREATE TABLE IF NOT EXISTS `zusatz` (
   `wahl_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
   `mehrfach` tinyint(1) NOT NULL DEFAULT '1'
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 COMMENT='Definiert Zusatzfelder für eine Wahl (zB K/B; sprachl/natw Bereiche)' ;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='Definiert Zusatzfelder für eine Wahl (zB K/B; sprachl/natw Bereiche)' ;
 
 -- --------------------------------------------------------
 
@@ -155,7 +157,19 @@ CREATE TABLE IF NOT EXISTS `zusatz_werte` (
 `id` int(11) NOT NULL,
   `zusatz_id` int(11) NOT NULL,
   `wert` varchar(100) NOT NULL
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 ;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `zuteilungen`
+--
+
+CREATE TABLE IF NOT EXISTS `zuteilungen` (
+  `schueler_id` int(11) NOT NULL,
+  `kurs_id` int(11) NOT NULL,
+  `block` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 --
 -- Indexes for dumped tables
@@ -214,6 +228,12 @@ ALTER TABLE `zusatz`
 --
 ALTER TABLE `zusatz_werte`
  ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `zusatz_id` (`zusatz_id`,`wert`);
+
+--
+-- Indexes for table `zuteilungen`
+--
+ALTER TABLE `zuteilungen`
+ ADD PRIMARY KEY (`schueler_id`,`block`), ADD KEY `kurs_id` (`kurs_id`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -296,6 +316,13 @@ ADD CONSTRAINT `zusatz_ibfk_1` FOREIGN KEY (`wahl_id`) REFERENCES `wahl_einstell
 --
 ALTER TABLE `zusatz_werte`
 ADD CONSTRAINT `zusatz_werte_ibfk_1` FOREIGN KEY (`zusatz_id`) REFERENCES `zusatz` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints der Tabelle `zuteilungen`
+--
+ALTER TABLE `zuteilungen`
+ADD CONSTRAINT `zuteilungen_ibfk_1` FOREIGN KEY (`schueler_id`) REFERENCES `schueler` (`id`) ON UPDATE CASCADE,
+ADD CONSTRAINT `zuteilungen_ibfk_2` FOREIGN KEY (`kurs_id`) REFERENCES `kurse` (`id`) ON UPDATE CASCADE;
 SET FOREIGN_KEY_CHECKS=1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
