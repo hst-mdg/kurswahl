@@ -94,6 +94,8 @@ function kurse_loeschen($beschr_id,$auch_zusaetze=FALSE) {
     mysql_query($cmd) or die ($cmd.": ".mysql_error());
     echo mysql_affected_rows()." Sch&uuml;lerwahlen wurden gel&ouml;scht.<br>";
   }
+  $cmd="DELETE z FROM zuteilungen AS z JOIN kurse AS k ON z.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON k.beschr_id=kb.id WHERE kb.id LIKE '$beschr_id' AND wahl_id='".$_SESSION['wahl_id']."'";
+  mysql_query($cmd) or die ($cmd.": ".mysql_error());
   $cmd="DELETE kj FROM kurs_jahrgang AS kj JOIN kurse AS k ON kj.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON k.beschr_id=kb.id WHERE kb.id LIKE '$beschr_id' AND wahl_id='".$_SESSION['wahl_id']."'";
   mysql_query($cmd) or die ($cmd.": ".mysql_error());
   //echo mysql_affected_rows()." Jahrgangseintraege geloescht $cmd.<br>";
