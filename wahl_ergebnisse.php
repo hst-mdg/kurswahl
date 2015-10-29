@@ -5,7 +5,14 @@ include 'abfragen.php';
 
 function wahlen_anzeigen($klasse, $nbloecke) {
   $wahl123_header="";
-  for ($i=1; $i<=$nbloecke; $i++) $wahl123_header.="<th>I</th><th>II</th><th>III</th>";
+  for ($i=1; $i<=$nbloecke; $i++) $wahl123_header.="<th>I</th><th>II</th><th>III</th><th>Z</th>";
+  $cmd="SELECT s.name,k.kuerzel,z.block FROM schueler AS s JOIN zuteilungen AS z ON z.schueler_id=s.id JOIN kurse AS k ON z.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id"
+    ." WHERE kb.wahl_id='".$_SESSION['wahl_id']."'";
+  $ergebnis = mysql_query($cmd) or die (mysql_error());
+  $zuteilung=array();
+  while($row = mysql_fetch_object($ergebnis)) {
+    $zuteilung[$row->name][$row->block]=$row->kuerzel;
+  }
   $cmd="SELECT s.name, LTRIM(RIGHT(s.name,LENGTH(s.name) - LOCATE('.',s.name))) AS nachname, k.block, sw.prioritaet, k.kuerzel"
     ." FROM schueler AS s JOIN schueler_wahl AS sw ON sw.schueler_id=s.id JOIN kurse as k ON sw.kurs_id=k.id "
     ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id=".$_SESSION['wahl_id']." ORDER BY nachname";
@@ -26,21 +33,32 @@ function wahlen_anzeigen($klasse, $nbloecke) {
 END;
   foreach ($wahl as $schueler=>$w) {
     $wahl123="";
-    for ($b=1; $b<=$nbloecke; $b++)
-      for ($prior=1; $prior<=3; $prior++) 
-        $wahl123.="<td>".(isset($w[$b][$prior])?join("<br>",$w[$b][$prior]):"-")."</td>";
-    echo "  <tr><td>$schueler</th>$wahl123</tr>\n";
+    for ($b=1; $b<=$nbloecke; $b++) {
+      $z="&nbsp;";
+      if (isset($zuteilung[$schueler][$b])) $z=$zuteilung[$schueler][$b];
+      for ($prior=1; $prior<=3; $prior++) {
+        $x=isset($w[$b][$prior])?join("<br>",$w[$b][$prior]):"-";
+        if ($x==$z) $x="<b>$x</b>";
+        $wahl123.="<td>$x</td>";
+      }
+      $wahl123.="<td>$z</td>";
+    }
+    echo "  <tr><td>$schueler</td>$wahl123</tr>\n";
   }
   echo "</table></fieldset>\n";
 }
 
-function zufaellig_setzen($klasse, $nbloecke) {
-  // Wahlen der Klasse erst löschen
+function wahlen_loeschen($klasse) {
   $cmd="DELETE sw FROM schueler_wahl AS sw JOIN schueler AS s ON sw.schueler_id=s.id JOIN kurse AS k ON sw.kurs_id=k.id "
   ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
   if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
   if (mysql_errno()==1001) return;
-  echo mysql_affected_rows()." Wahleintraege wurden geloescht. ($cmd)<br>";
+  echo mysql_affected_rows()." Wahleintraege von der Klasse $klasse wurden gel&ouml;scht.<br>";
+}
+
+function zufaellig_setzen($klasse, $nbloecke) {
+  // Wahlen der Klasse erst löschen
+  wahlen_loeschen($klasse);
   // Wählbare Kurse abfragen
   $auswahl="('$klasse'";
   if (preg_match("/([0-9]+)[a-z]/",$klasse,$matches)) $auswahl.=",'$matches[1]'";
@@ -85,8 +103,11 @@ function zufaellig_setzen($klasse, $nbloecke) {
 $nbloecke=block_anzahl($_SESSION['wahl_id']);
 $klassen=$_POST['klassen'];
 foreach($klassen as $klasse) {
-  if (isset($_POST["klassen_simulation"])) zufaellig_setzen($klasse, $nbloecke);
-  if (isset($_POST["klassen_simulation"]) || isset($_POST["klassen_anzeigen"])) wahlen_anzeigen($klasse, $nbloecke);
+  if (isset($_POST["klassen_loeschen"])) wahlen_loeschen($klasse, $nbloecke);
+  else {
+    if (isset($_POST["klassen_simulation"])) zufaellig_setzen($klasse, $nbloecke);
+    if (isset($_POST["klassen_simulation"]) || isset($_POST["klassen_anzeigen"])) wahlen_anzeigen($klasse, $nbloecke);
+  }
 }
 
 
