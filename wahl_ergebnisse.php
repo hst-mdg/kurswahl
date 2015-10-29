@@ -37,22 +37,23 @@ END;
 function zufaellig_setzen($klasse, $nbloecke) {
   // Wahlen der Klasse erst löschen
   $cmd="DELETE sw FROM schueler_wahl AS sw JOIN schueler AS s ON sw.schueler_id=s.id JOIN kurse AS k ON sw.kurs_id=k.id "
-  ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id='.".$_SESSION['wahl_id']."'";
+  ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
   if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
   if (mysql_errno()==1001) return;
+  echo mysql_affected_rows()." Wahleintraege wurden geloescht. ($cmd)<br>";
   // Wählbare Kurse abfragen
   $auswahl="('$klasse'";
   if (preg_match("/([0-9]+)[a-z]/",$klasse,$matches)) $auswahl.=",'$matches[1]'";
   $auswahl.=")";
   $cmd="SELECT DISTINCT k.id,k.block FROM kurse AS k JOIN kurs_jahrgang as kj ON kj.kurs_id=k.id "
     ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE kj.jahrgang IN $auswahl AND kb.wahl_id=".$_SESSION['wahl_id'];
-  $ergebnis=mysql_query($cmd) or die (mysql_error());
+  $ergebnis=mysql_query($cmd) or die ("$cmd: ".mysql_error());
   $kurse=array();
   while($row = mysql_fetch_object($ergebnis)) $kurse[$row->block][]=$row->id;
   // Alle IDs der Schueler aus $klasse abfragen
   $schueler_ids=array();
   $cmd="SELECT id FROM schueler WHERE klasse='$klasse'";
-  $ergebnis=mysql_query($cmd) or die (mysql_error());
+  $ergebnis=mysql_query($cmd) or die ("$cmd: ".mysql_error());
   while($row = mysql_fetch_object($ergebnis)) $schueler_ids[]=$row->id;  
   $values="";
   foreach ($kurse as $k) {
@@ -78,7 +79,7 @@ function zufaellig_setzen($klasse, $nbloecke) {
   }
   $values=substr($values,0,-1);
   $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet) VALUES $values";
-  if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
+  if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die("$cmd: ".mysql_error());
 }
 
 $nbloecke=block_anzahl($_SESSION['wahl_id']);
