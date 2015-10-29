@@ -154,7 +154,6 @@ function zuteilung_speichern($fname) {
   echo "</table><br>";
   if ($values!="") {
     $values=substr($values,0,-1);
-    echo $values."<br>";
     $cmd="INSERT INTO zuteilungen (schueler_id,kurs_id,block) VALUES $values ON DUPLICATE KEY UPDATE kurs_id=VALUES(kurs_id)";
     mysql_query($cmd) or die ("$cmd: ".mysql_error());
   }
