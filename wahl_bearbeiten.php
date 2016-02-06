@@ -17,15 +17,15 @@ function kurs_anzeige($wahl_id, $block, $lehrer, $action) {
   
   if (!$lehrer) { // Gewählte Kurse des Schülers abfragen und in $selected speichern.
     $selected=array();
-    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN schueler ON schueler.name='".$_SESSION['schuelername']
-      ."' AND schueler_id=schueler.id AND schueler_wahl.block=$block";
+    $abfrage="SELECT kurs_id,prioritaet FROM schueler_wahl JOIN user ON user.name='".$_SESSION['user']
+      ."' AND schueler_id=user.id AND schueler_wahl.block=$block";
     $ergebnis = mysql_query($abfrage) or die (mysql_error());
     while($row = mysql_fetch_object($ergebnis)) {
       $selected[$row->kurs_id][$row->prioritaet]=true; // kurs_id aus 'kurse', nicht aus 'kurs_beschreibungen' !
     }
   }
   
-  if (isset($_SESSION['lehrername'])) {
+  if (lehrer_angemeldet()) {
     $jahrgang_cond="1";
   } else {
     $klasse=$_SESSION['klasse'];
@@ -66,9 +66,9 @@ AND $jahrgang_cond
 GROUP BY kurse.beschr_id
 END;
   $ergebnis = mysql_query($abfrage) or die (mysql_error());
-  if (isset($_SESSION['lehrername'])) {
+  if (lehrer_angemeldet()) {
     $col1="<th>&nbsp;</th>";
-  } elseif (isset($_SESSION['schuelername'])) {
+  } else { // Schüler
     $col1="<th>I</th><th>II</th><th>III</th>";
   }
   $_SESSION['wahl_id']=$wahl_id;
@@ -138,7 +138,7 @@ EOF;
  * @param wahl_id ID der zur Teilnahme ausgewählten Wahl
  */
 function wahl_teilnahme($wahl_id) {
-  $schuelername=$_SESSION['schuelername'];
+  $schuelername=$_SESSION['user'];
   $wahlname=""; $enddatum="";
   $block=1;
   if (isset($_SESSION['block']))
@@ -152,11 +152,11 @@ function wahl_teilnahme($wahl_id) {
   if (!isset($_POST['kurs_speichern'])) { // Noch keine Eingabe
     echo "Du hast bis $enddatum Zeit, an der Wahl '$wahlname' teilzunehmen.<br>\n";
   } else { // Speichern der Eingabe
-    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN schueler WHERE schueler_wahl.schueler_id=schueler.id and schueler.name='$schuelername' AND block='$block'";
+    $cmd="DELETE schueler_wahl FROM schueler_wahl JOIN user WHERE schueler_wahl.schueler_id=user.id and user.name='$schuelername' AND block='$block'";
     if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
     for ($wahl123=1; $ok&&($wahl123<=3); $wahl123++) {
       if (!isset($_POST['kurswahl_id'.$wahl123])) continue;
-      $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet,block) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123,$block FROM schueler WHERE schueler.name='$schuelername'";
+      $cmd="INSERT INTO schueler_wahl (schueler_id,kurs_id,prioritaet,block) SELECT id,".$_POST['kurswahl_id'.$wahl123].",$wahl123,$block FROM user WHERE user.name='$schuelername'";
       if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
     }
     if ($ok) {
@@ -202,7 +202,6 @@ END;
     echo "Wirklich l&ouml;schen?!?";
     echo "<form action='#' method='post'>"
     ."<input type='submit' name='wahl_loeschen_ok' value='Ja'>"
-    ."<input type='hidden' name='lehrername' value='".$_SESSION['lehrername']."'>"
     ."<button name='wahl_id' value='".$_SESSION['wahl_id']."'>Nein</button></form>";
     exit;
   } else if (isset($_POST['wahl_loeschen_ok'])) {
@@ -212,12 +211,9 @@ END;
     include_once("wahl_festlegen.php");
     exit;
   }
-  $cmd="SELECT DISTINCT klasse FROM schueler";
-  $ergebnis = mysql_query($cmd) or die (mysql_error());
   $klassen_options="";
-  while ($row = mysql_fetch_object($ergebnis)) {
-    $klassen_options.="<option value='".$row->klasse."'>".$row->klasse."</option>\n";
-  }
+  foreach(klassen_namen() as $id=>$klasse)
+    $klassen_options.="<option value='".$klasse."'>".$klasse."</option>\n";
   $cmd="SELECT startdatum, enddatum,name, bloecke, min_teilnehmer, max_teilnehmer FROM wahl_einstellungen WHERE id='$wahl_id'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   if (!$row = mysql_fetch_object($ergebnis)) {
@@ -273,13 +269,13 @@ if (!isset($_SESSION['wahl_id']))
 $wahl_id=$_SESSION['wahl_id'];
 
 include 'db_connect.php';
+check_login();
 
-if (isset($_SESSION['lehrername'])) {  // Bearbeitung durch Lehrer
+if (lehrer_angemeldet()) {  // Bearbeitung durch Lehrer
   wahl_einstellungen($wahl_id);
-  echo "<form action='wahl_festlegen.php' method='post'><input type='submit' value='Andere Wahl bearbeiten'><input type='hidden' name='lehrername' value='".$_SESSION["lehrername"]."'></form>";
 } else {                            // Bearbeitung durch Schüler
   wahl_teilnahme($wahl_id);
-  echo "<form action='wahl_festlegen.php' method='post'><input type='submit' value='Andere Wahl bearbeiten'><input type='hidden' name='schuelername' value='".$_SESSION["schuelername"]."'></form>";
 }
+echo "<form action='wahl_festlegen.php' method='post'><input type='submit' value='Andere Wahl bearbeiten'></form>";
 
 ?>

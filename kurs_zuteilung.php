@@ -18,7 +18,7 @@ if ($bloecke!=1) {
 }
 
 $cmd=<<<END
-SELECT s.name, k.kuerzel, sw.prioritaet FROM schueler AS s
+SELECT s.name, k.kuerzel, sw.prioritaet FROM user AS s
 JOIN schueler_wahl AS sw ON sw.schueler_id=s.id
 JOIN kurse AS k ON k.id=sw.kurs_id
 JOIN kurs_beschreibungen as kb ON kb.id=k.beschr_id
@@ -116,7 +116,7 @@ END;
 }
 
 function zuteilung_speichern($fname) {
-  $cmd="SELECT id,name FROM schueler";
+  $cmd="SELECT id,name FROM user";
   $res=mysql_query($cmd) or die ("cmd: ".mysql_error());
   while ($row=mysql_fetch_object($res)) {
     $schueler_id[$row->name]=$row->id;

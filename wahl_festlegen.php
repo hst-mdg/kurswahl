@@ -1,6 +1,7 @@
 <?php
 if (!isset($_SESSION)) session_start();
 include 'db_connect.php';
+include_once 'abfragen.php';
 
 /**
  * Holt alle in der DB eingetragenen Wahlen.
@@ -39,27 +40,20 @@ END;
 
 unset($_SESSION['wahl_id']);
 unset($_SESSION['kurs_id']);
+
+check_login();
+
 // Wahlmöglichkeiten aus DB holen:
 $wahlen=wahlen();
 
-$l=""; if (isset($_POST['lehrername'])) $l=$_POST['lehrername'];
-$s=""; if (isset($_POST['schuelername'])) $s=$_POST['schuelername'];
-
-$cmd="INSERT INTO logins (lehrer,schueler,datum) VALUES ('$l','$s',NOW())";
-mysql_query($cmd);
-
-if (isset($_POST['lehrername'])) {
-  $_SESSION['lehrername']=$_POST['lehrername'];
+if (lehrer_angemeldet()) {
   $wahlen[-1]="Neue Wahl";
   echo "W&auml;hlen Sie aus, ob Sie eine neue Wahl anlegen bzw. welche Wahl
  Sie verwalten m&ouml;chten:<br>\n"
     .form($wahlen);
-} elseif (isset($_POST['schuelername'])) {
-  $_SESSION['schuelername']=$_POST['schuelername'];
+} else { // Schüler
   echo "W&auml;hle aus, an welcher Wahl du teilnehmen m&ouml;chtest:<br>\n"
     .form($wahlen);
-} else {
-  header("Location: login.php");
 }
 echo "<form action='login.php' method='post'><input type='submit' value='Logout'></form>"; 
 

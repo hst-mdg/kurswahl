@@ -1,4 +1,44 @@
 <?php
+
+/** Prüft ob die in $_SESSION übergebenen Anmeldedaten OK sind.
+  */
+function check_login() {
+  $user="";
+  $pw="";
+  if (isset($_SESSION['user'])) $user=mysql_real_escape_string($_SESSION['user']);
+  if (isset($_SESSION['password'])) $pw=mysql_real_escape_string($_SESSION['password']);
+  $cmd="SELECT * FROM user WHERE name='$user' and passwort='$pw'";
+  $res=mysql_query($cmd) or die(mysql_error());
+  if ($row = mysql_fetch_object($res))
+    return true;
+  die ("Ung&uuml;ltiger Login!");
+}
+
+/** Prüft ob der angemeldete User als Lehrer gespeichert ist.
+  * Vorher sollte ein check_login stattgefunden haben!
+  * @return 1 wenn der User Lehrer ist, 0 sonst.
+  */
+  
+function lehrer_angemeldet() {
+  $cmd="SELECT name,lehrer FROM user WHERE name='{$_SESSION['user']}' AND lehrer!=0";
+  $res = mysql_query($cmd) or die ("$cmd: ".mysql_error());
+  return mysql_affected_rows()>0;
+}
+
+/** Speichert alle Klassen (als key) mit zugehriger ID (als value)
+  *  in einem Array.
+  *  @return [name => id, ...] Array
+  */    
+function klassen_namen() {
+  $cmd="SELECT id, name FROM klassen ORDER BY name+0,LPAD(LOWER(name), 10,0)";
+  $ergebnis = mysql_query($cmd) or die ("$cmd: ".mysql_error());
+  $ret=array();
+  while($row = mysql_fetch_object($ergebnis)) {
+    $ret[$row->id]=$row->name;
+  }
+  return $ret;
+}
+
 /**
  * Speichert alle Kurs-Zusätze (z.B. sprachlich/mathematisch) in einem Array.
  * @param $wahl_id ID der zur Teilnahme ausgewählten Wahl
