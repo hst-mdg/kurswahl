@@ -6,7 +6,7 @@ include 'abfragen.php';
 function wahlen_anzeigen($klasse, $nbloecke) {
   $wahl123_header="";
   for ($i=1; $i<=$nbloecke; $i++) $wahl123_header.="<th>I</th><th>II</th><th>III</th><th>Z</th>";
-  $cmd="SELECT s.name,k.kuerzel,z.block FROM schueler AS s JOIN zuteilungen AS z ON z.schueler_id=s.id JOIN kurse AS k ON z.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id"
+  $cmd="SELECT s.name,k.kuerzel,z.block FROM user AS s JOIN zuteilungen AS z ON z.schueler_id=s.id JOIN kurse AS k ON z.kurs_id=k.id JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id"
     ." WHERE kb.wahl_id='".$_SESSION['wahl_id']."'";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   $zuteilung=array();
@@ -14,8 +14,9 @@ function wahlen_anzeigen($klasse, $nbloecke) {
     $zuteilung[$row->name][$row->block]=$row->kuerzel;
   }
   $cmd="SELECT s.name, LTRIM(RIGHT(s.name,LENGTH(s.name) - LOCATE('.',s.name))) AS nachname, k.block, sw.prioritaet, k.kuerzel"
-    ." FROM schueler AS s JOIN schueler_wahl AS sw ON sw.schueler_id=s.id JOIN kurse as k ON sw.kurs_id=k.id "
-    ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id=".$_SESSION['wahl_id']." ORDER BY nachname";
+    ." FROM user AS s JOIN schueler_wahl AS sw ON sw.schueler_id=s.id JOIN kurse as k ON sw.kurs_id=k.id "
+    ." JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id JOIN klassen AS kl ON s.klassen_id=kl.id "
+    ." WHERE kl.name='$klasse' AND kb.wahl_id=".$_SESSION['wahl_id']." ORDER BY nachname";
   $ergebnis = mysql_query($cmd) or die (mysql_error());
   $wahl=array();
   while($row = mysql_fetch_object($ergebnis)) {
@@ -50,11 +51,13 @@ END;
 }
 
 function wahlen_loeschen($klasse) {
-  $cmd="DELETE sw FROM schueler_wahl AS sw JOIN schueler AS s ON sw.schueler_id=s.id JOIN kurse AS k ON sw.kurs_id=k.id "
-  ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id WHERE s.klasse='$klasse' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
+  $cmd="DELETE sw FROM schueler_wahl AS sw JOIN user AS s ON sw.schueler_id=s.id JOIN kurse AS k ON sw.kurs_id=k.id "
+  ."JOIN kurs_beschreibungen AS kb ON kb.id=k.beschr_id JOIN klassen as kl ON s.klassen_id=kl.id "
+  ."WHERE kl.name='$klasse' AND kb.wahl_id='".$_SESSION['wahl_id']."'";
   if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die(mysql_error());
   if (mysql_errno()==1001) return;
-  echo mysql_affected_rows()." Wahleintraege von der Klasse $klasse wurden gel&ouml;scht.<br>";
+  $n=mysql_affected_rows();
+  if ($n>0) echo "$n Wahleintraege von der Klasse $klasse wurden gel&ouml;scht.<br>";
 }
 
 function zufaellig_setzen($klasse, $nbloecke) {
@@ -71,14 +74,18 @@ function zufaellig_setzen($klasse, $nbloecke) {
   while($row = mysql_fetch_object($ergebnis)) $kurse[$row->block][]=$row->id;
   // Alle IDs der Schueler aus $klasse abfragen
   $schueler_ids=array();
-  $cmd="SELECT id FROM schueler WHERE klasse='$klasse'";
+  $cmd="SELECT user.id FROM user JOIN klassen on user.klassen_id=klassen.id WHERE klassen.name='$klasse'";
   $ergebnis=mysql_query($cmd) or die ("$cmd: ".mysql_error());
-  while($row = mysql_fetch_object($ergebnis)) $schueler_ids[]=$row->id;  
+  while($row = mysql_fetch_object($ergebnis)) $schueler_ids[]=$row->id;
+  if (sizeof($schueler_ids)<=0) {
+    echo "Keine Sch&uuml;ler in Klasse $klasse.<br>";
+    return;
+  }
   $values="";
-  foreach ($kurse as $k) {
-    if (sizeof($k)<3) {
-      echo "Nicht genug w&auml;hlbare Kurse f&uuml;r Klasse $klasse.<br>";
-      return;
+  for ($block=1; $block<=$nbloecke; $block++) {
+    if (!isset($kurse[$block]) || sizeof($kurse[$block])<3) {
+        echo "Nicht genug w&auml;hlbare Kurse f&uuml;r Klasse $klasse.<br>";
+        return;
     }
   }
   foreach ($schueler_ids as $id) {
@@ -101,6 +108,10 @@ function zufaellig_setzen($klasse, $nbloecke) {
   if (!($ok=mysql_query($cmd)))  if (mysql_errno()==1001) echo "<font color='red'>".mysql_error()."</font><br>"; else die("$cmd: ".mysql_error());
 }
 
+check_login();
+
+echo "<a href='wahl_bearbeiten.php'>Zur Wahlbearbeitung</a><br>";
+
 $nbloecke=block_anzahl($_SESSION['wahl_id']);
 if (!isset($_POST['klassen'])) {
   echo "<font color='red'>Es muss eine oder mehrere Klassen aus der Liste gw&auml;hlt werden.</font><br>";
@@ -115,6 +126,7 @@ foreach($klassen as $klasse) {
     if (isset($_POST["klassen_simulation"]) || isset($_POST["klassen_anzeigen"])) wahlen_anzeigen($klasse, $nbloecke);
   }
 }
+echo "<br><a href='wahl_bearbeiten.php'>Zur Wahlbearbeitung</a><br>";
 
 
 ?>
