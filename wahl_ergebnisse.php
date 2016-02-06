@@ -26,9 +26,10 @@ function wahlen_anzeigen($klasse, $nbloecke) {
     echo "Keine Eintraege fuer Klasse $klasse.<br>";
     return;
   }
-  echo <<<END
+  
+echo <<<END
 <fieldset><legend>Klasse $klasse:</legend>
-<table border='1'>
+<table border='1' style='border-collapse:collapse; font-size:0.6em;'>
   <tr><th>Name</th>$wahl123_header</tr>
 END;
   foreach ($wahl as $schueler=>$w) {
