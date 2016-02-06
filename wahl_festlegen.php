@@ -42,6 +42,12 @@ unset($_SESSION['kurs_id']);
 // Wahlmöglichkeiten aus DB holen:
 $wahlen=wahlen();
 
+$l=""; if (isset($_POST['lehrername'])) $l=$_POST['lehrername'];
+$s=""; if (isset($_POST['schuelername'])) $s=$_POST['schuelername'];
+
+$cmd="INSERT INTO logins (lehrer,schueler,datum) VALUES ('$l','$s',NOW())";
+mysql_query($cmd);
+
 if (isset($_POST['lehrername'])) {
   $_SESSION['lehrername']=$_POST['lehrername'];
   $wahlen[-1]="Neue Wahl";
@@ -55,6 +61,6 @@ if (isset($_POST['lehrername'])) {
 } else {
   header("Location: login.php");
 }
-echo "<form action='login.php'_logo_guid method='post'><input type='submit' value='Logout'></form>"; 
+echo "<form action='login.php' method='post'><input type='submit' value='Logout'></form>"; 
 
 ?>
