@@ -227,11 +227,12 @@ END;
 <form action="wahl_bearbeiten.php" method="post">
   <fieldset>
     <legend>Wahleinstellungen</legend>
-    <label>Bezeichnung: <input type="text" name="name" value="$row->name"> <label> <br>
-    <label>Startdatum: <input type="text" name="startdatum" value="$row->startdatum"> </label> <br>
-    <label>Enddatum:   <input type="text" name="enddatum" value="$row->enddatum"> </label> <br>
-    <label>Anzahl Bl&ouml;cke (z.B. 4 Quartale): <input type="number" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
-    <label>Kursgr&ouml;&szlig;e: <input type="text" size="4" name="min_tn" value="$row->min_teilnehmer"> bis  <input type="text" size="4" name="max_tn" value="$row->max_teilnehmer"> </label> <br>
+    <label for="name">Bezeichnung: <input type="text" id="name" name="name" value="$row->name"> </label> <br>
+    <label for="start">Startdatum: <input type="text" id="start" name="startdatum" value="$row->startdatum"> </label> <br>
+    <label for="end">Enddatum:   <input type="text" id="end" name="enddatum" value="$row->enddatum"> </label> <br>
+    <label for="blk">Anzahl Bl&ouml;cke (z.B. 4 Quartale): <input type="number" id="blk" name="bloecke" min="1" max="4" size="1" value="$row->bloecke"> </label> <br>
+    <label for="min">Kursgr&ouml;&szlig;e: <input type="text" id="min" size="4" name="min_tn" value="$row->min_teilnehmer"> </label>
+        <label for="max">bis  <input type="text" id="max" size="4" name="max_tn" value="$row->max_teilnehmer"> </label> <br>
     <input type="submit" name="wahleinstellungen_speichern" value="&Auml;nderungen speichern">
     <input type="reset" name="wahleinstellungen_reset" value="Verwerfen">
     <input type="submit" name="wahl_loeschen" value="Wahl l&ouml;schen?!?" disabled>
@@ -248,6 +249,9 @@ END;
 </form>
 <form action="kurs_zuteilung.php" method="post">
 <input type="submit" value="Kurse zuteilen">
+</form>
+<form action="wahl_verpflichtungen.php" method="post">
+<input type="submit" value="Wahleinschr&auml;nkungen eingeben">
 </form>
 END;
   if ($row = mysql_fetch_object($ergebnis)) {
